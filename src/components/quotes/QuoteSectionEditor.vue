@@ -10,6 +10,9 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import { formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
 import type { Currency, QuoteLine, QuoteLineCategory, QuoteLinePayload, QuoteSection } from '@dash4/shared'
 import { linePrice, sortedByCategory } from '@/utils/quotes'
+import { useAuthStore } from '@/stores/auth'
+import ArticlePicker from '@/components/stock/ArticlePicker.vue'
+import type { Article } from '@dash4/shared'
 
 /**
  * Une section du devis et ses lignes, modifiables sur place.
@@ -115,6 +118,12 @@ function preview(line: QuoteLine): { unitPrice: number; total: number } {
 }
 
 // Nouvelle ligne
+const canPickArticle = useAuthStore().can('stock.view')
+/** Article du stock : la ligne reprend sa désignation, sa catégorie, son coût et son coefficient. */
+function addArticle(article: Article): void {
+  emit('addLine', { article_id: article.id, quantity: newLine.value.quantity || 1 })
+}
+
 const newLine = ref({ designation: '', quantity: 1, unit_cost: 0, coefficient: 1, category: 'other' as QuoteLineCategory })
 function add(): void {
   if (!newLine.value.designation.trim()) return
@@ -313,6 +322,11 @@ const money = (v: number) => formatMoney(v, props.currency)
             <td />
           </template>
           <td><Button icon="pi pi-plus" size="small" aria-label="Ajouter la ligne" :disabled="!newLine.designation.trim()" @click="add" /></td>
+        </tr>
+        <tr v-if="canPickArticle" class="new-line">
+          <td :colspan="8">
+            <ArticlePicker placeholder="… ou choisir un article du stock (quantité ci-dessus)" @select="addArticle" />
+          </td>
         </tr>
       </tfoot>
     </table>
