@@ -30,6 +30,25 @@ export const router = createRouter({
           meta: { title: 'Tableau de bord' },
         },
         {
+          path: 'clients',
+          name: 'clients',
+          component: () => import('@/views/ClientsView.vue'),
+          meta: { title: 'Clients', permissions: ['clients.view', 'clients.view.own'] },
+        },
+        {
+          path: 'clients/:id(\\d+)',
+          name: 'client',
+          component: () => import('@/views/ClientDetailView.vue'),
+          props: true,
+          meta: { title: 'Fiche client', permissions: ['clients.view', 'clients.view.own'] },
+        },
+        {
+          path: 'contacts',
+          name: 'contacts',
+          component: () => import('@/views/ContactsView.vue'),
+          meta: { title: 'Contacts', permissions: ['clients.view', 'clients.view.own'] },
+        },
+        {
           path: 'utilisateurs',
           name: 'users',
           component: () => import('@/views/UsersView.vue'),
