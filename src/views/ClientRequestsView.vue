@@ -191,7 +191,12 @@ onMounted(() => {
       envoyée.
     </p>
 
-    <ClientRequestDialog v-model:visible="dialogOpen" :request="edited" @saved="onSaved" />
+    <ClientRequestDialog
+      v-model:visible="dialogOpen"
+      :request="edited"
+      @saved="onSaved"
+      @converted="(id) => router.push({ name: 'project', params: { id } })"
+    />
   </div>
 </template>
 

@@ -49,6 +49,19 @@ export const router = createRouter({
           meta: { title: 'Demandes clients', permissions: ['client_requests.view', 'client_requests.view.own'] },
         },
         {
+          path: 'projets',
+          name: 'projects',
+          component: () => import('@/views/ProjectsView.vue'),
+          meta: { title: 'Projets', permissions: ['projects.view', 'projects.view.own'] },
+        },
+        {
+          path: 'projets/:id(\\d+)',
+          name: 'project',
+          component: () => import('@/views/ProjectDetailView.vue'),
+          props: true,
+          meta: { title: 'Projet', permissions: ['projects.view', 'projects.view.own'] },
+        },
+        {
           path: 'contacts',
           name: 'contacts',
           component: () => import('@/views/ContactsView.vue'),

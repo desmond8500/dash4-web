@@ -10,7 +10,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Client, ClientRequest, Contact } from '@dash4/shared'
+import type { Client, ClientRequest, Contact, Project } from '@dash4/shared'
 import type { QuickAction } from '@/utils/clientRequests'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -19,6 +19,14 @@ import ContactFormDialog from '@/components/ContactFormDialog.vue'
 import ClientLogo from '@/components/ClientLogo.vue'
 import ClientRequestTable from '@/components/ClientRequestTable.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
+import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
+import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import { periodLabel, projectStatusSeverity } from '@/utils/projects'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { logoError, LOGO_TYPES, statusSeverity } from '@/utils/clients'
 import { telHref } from '@/utils/contactLists'
@@ -37,6 +45,27 @@ const contactDialog = ref(false)
 const editedContact = ref<Contact | null>(null)
 
 const contacts = computed(() => client.value?.contacts ?? [])
+
+// Projets du client
+const canSeeProjects = computed(() => auth.canAny(['projects.view', 'projects.view.own']))
+const projects = ref<Project[]>([])
+const projectDialog = ref(false)
+const attachmentsTab = ref('notes')
+
+async function loadProjects(): Promise<void> {
+  if (!canSeeProjects.value) return
+  try {
+    projects.value = (await api.projects.list({ client_id: Number(props.id), per_page: 100 })).data
+  } catch {
+    projects.value = []
+  }
+}
+
+watch(() => props.id, loadProjects, { immediate: true })
+
+function onProjectSaved(project: Project): void {
+  void router.push({ name: 'project', params: { id: project.id } })
+}
 
 // Historique des demandes du client (TODO §3)
 const requestsStore = useClientRequestsStore()
@@ -377,6 +406,61 @@ function contactEmails(contact: Contact): string[] {
         </Column>
       </DataTable>
 
+      <template v-if="canSeeProjects">
+        <div class="page-header">
+          <h2>Projets</h2>
+          <Button
+            v-if="auth.can('projects.create')"
+            label="Nouveau projet"
+            icon="pi pi-plus"
+            size="small"
+            @click="projectDialog = true"
+          />
+        </div>
+        <DataTable
+          :value="projects"
+          data-key="id"
+          row-hover
+          class="clickable"
+          @row-click="router.push({ name: 'project', params: { id: $event.data.id } })"
+        >
+          <template #empty>Aucun projet pour ce client.</template>
+          <Column header="Projet">
+            <template #body="{ data }"><strong>{{ data.name }}</strong></template>
+          </Column>
+          <Column header="Statut" style="width: 9rem">
+            <template #body="{ data }">
+              <Tag :value="data.status.label" :severity="projectStatusSeverity(data.status.value)" />
+            </template>
+          </Column>
+          <Column header="Période" style="width: 15rem">
+            <template #body="{ data }">
+              <span class="muted">{{ periodLabel(data.start_date, data.end_date) || '—' }}</span>
+            </template>
+          </Column>
+        </DataTable>
+        <ProjectFormDialog v-model:visible="projectDialog" :project="null" :client-id="client.id" @saved="onProjectSaved" />
+      </template>
+
+      <Tabs v-model:value="attachmentsTab">
+        <TabList>
+          <Tab value="notes">Notes</Tab>
+          <Tab value="links">Liens</Tab>
+          <Tab value="documents">Documents</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
+            <AttachmentsPanel
+              :kind="kind"
+              type="clients"
+              :id="client.id"
+              :can-add="auth.can('clients.update')"
+              :can-manage="auth.can('clients.delete')"
+            />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+
       <template v-if="canSeeRequests">
         <div class="page-header">
           <h2>Demandes</h2>
@@ -404,6 +488,10 @@ function contactEmails(contact: Contact): string[] {
 </template>
 
 <style scoped>
+.clickable :deep(tbody tr) {
+  cursor: pointer;
+}
+
 .center {
   display: flex;
   flex-direction: column;
