@@ -17,8 +17,11 @@ export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler
 }
 
+/** Adresse de l'API utilisée par cette version (VITE_API_URL au moment du build). */
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api'
+
 export const api = createApiClient({
-  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api',
+  baseUrl: API_URL,
   storage: tokenStorage,
   onUnauthorized: () => unauthorizedHandler(),
 })
