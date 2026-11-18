@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -58,12 +58,12 @@ onMounted(() => void Promise.all([loadProviders(), loadBrands()]))
 // Fournisseur
 const providerOpen = ref(false)
 const editedProvider = ref<Provider | null>(null)
-const pForm = reactive({ name: '', contact_name: '', phone: '', email: '', address: '', website: '', description: '' })
+const pForm = ref({ name: '', contact_name: '', phone: '', email: '', address: '', website: '', description: '' })
 const pError = ref<string | null>(null)
 function openProvider(p: Provider | null): void {
   editedProvider.value = p
   pError.value = null
-  Object.assign(pForm, {
+  pForm.value = {
     name: p?.name ?? '',
     contact_name: p?.contact_name ?? '',
     phone: p?.phone ?? '',
@@ -71,19 +71,20 @@ function openProvider(p: Provider | null): void {
     address: p?.address ?? '',
     website: p?.website ?? '',
     description: p?.description ?? '',
-  })
+  }
   providerOpen.value = true
 }
 async function saveProvider(): Promise<void> {
   const t = (v: string) => v.trim() || null
+  const f = pForm.value
   const payload = {
-    name: pForm.name.trim(),
-    contact_name: t(pForm.contact_name),
-    phone: t(pForm.phone),
-    email: t(pForm.email),
-    address: t(pForm.address),
-    website: t(pForm.website),
-    description: t(pForm.description),
+    name: f.name.trim(),
+    contact_name: t(f.contact_name),
+    phone: t(f.phone),
+    email: t(f.email),
+    address: t(f.address),
+    website: t(f.website),
+    description: t(f.description),
   }
   try {
     if (editedProvider.value) await api.providers.update(editedProvider.value.id, payload)
