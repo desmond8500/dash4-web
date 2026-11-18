@@ -135,15 +135,15 @@ function remove(): void {
 
       <Tabs v-model:value="tab">
         <TabList>
-          <Tab value="articles">Articles <span class="count">{{ brand.articles_count }}</span></Tab>
+          <Tab value="articles">Articles <span class="count">{{ brand!.articles_count }}</span></Tab>
           <Tab value="links">Liens</Tab>
           <Tab value="documents">Documents</Tab>
           <Tab value="notes">Notes</Tab>
         </TabList>
         <TabPanels>
-          <TabPanel value="articles"><ArticleList :filters="{ brand_id: brand.id }" /></TabPanel>
+          <TabPanel value="articles"><ArticleList :filters="{ brand_id: brand!.id }" /></TabPanel>
           <TabPanel v-for="kind in (['links', 'documents', 'notes'] as const)" :key="kind" :value="kind">
-            <AttachmentsPanel :kind="kind" type="brands" :id="brand.id" :can-add="brand.can.update" :can-manage="brand.can.delete" />
+            <AttachmentsPanel :kind="kind" type="brands" :id="brand!.id" :can-add="brand!.can.update" :can-manage="brand!.can.delete" />
           </TabPanel>
         </TabPanels>
       </Tabs>
