@@ -53,13 +53,16 @@ function addFrom(input: typeof toInput, list: typeof to): void {
   error.value = invalid.length ? `Adresse invalide : ${invalid.join(', ')}` : null
 }
 
+const addTo = () => addFrom(toInput, to)
+const addCc = () => addFrom(ccInput, cc)
+
 function toggleSuggestion(email: string): void {
   to.value = to.value.includes(email) ? to.value.filter((e) => e !== email) : [...to.value, email]
 }
 
 async function send(): Promise<void> {
-  addFrom(toInput, to)
-  addFrom(ccInput, cc)
+  addTo()
+  addCc()
   if (error.value) return
   if (!to.value.length) {
     error.value = 'Indiquez au moins un destinataire.'
@@ -104,14 +107,14 @@ async function send(): Promise<void> {
         <div class="chips">
           <Chip v-for="email in to" :key="email" :label="email" removable @remove="to = to.filter((e) => e !== email)" />
         </div>
-        <InputText id="e-to" v-model="toInput" placeholder="Autre adresse, puis Entrée (plusieurs : séparées par des virgules)" @keydown.enter.prevent="addFrom(toInput, to)" @blur="addFrom(toInput, to)" />
+        <InputText id="e-to" v-model="toInput" placeholder="Autre adresse, puis Entrée (plusieurs : séparées par des virgules)" @keydown.enter.prevent="addTo" @blur="addTo" />
       </div>
       <div class="form-field form-field--full">
         <label for="e-cc">Copie</label>
         <div class="chips">
           <Chip v-for="email in cc" :key="email" :label="email" removable @remove="cc = cc.filter((e) => e !== email)" />
         </div>
-        <InputText id="e-cc" v-model="ccInput" placeholder="Facultatif" @keydown.enter.prevent="addFrom(ccInput, cc)" @blur="addFrom(ccInput, cc)" />
+        <InputText id="e-cc" v-model="ccInput" placeholder="Facultatif" @keydown.enter.prevent="addCc" @blur="addCc" />
       </div>
       <div class="form-field form-field--full">
         <label for="e-subject">Objet</label>
