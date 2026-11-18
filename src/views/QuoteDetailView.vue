@@ -33,6 +33,8 @@ import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel
 import QuoteProposalPanel from '@/components/quotes/QuoteProposalPanel.vue'
 import QuoteEmailDialog from '@/components/quotes/QuoteEmailDialog.vue'
 import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
+import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
+import { invoiceStatusSeverity } from '@/utils/invoices'
 import Dialog from 'primevue/dialog'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
@@ -216,6 +218,10 @@ function remove(): void {
   })
 }
 
+// Factures du devis accepté
+const invoiceOpen = ref(false)
+const canInvoice = computed(() => quote.value?.status.value === 'accepted' && auth.can('invoices.create'))
+
 // Étape 2 : e-mail, modèles, proposition technique
 const emailOpen = ref(false)
 const pickerOpen = ref(false)
@@ -324,6 +330,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           </span>
         </div>
         <div class="actions">
+          <Button v-if="canInvoice" label="Facturer" icon="pi pi-receipt" severity="success" @click="invoiceOpen = true" />
           <Button v-if="quote.can.export && quote.can.update" label="Envoyer" icon="pi pi-send" @click="emailOpen = true" />
           <Button v-if="quote.can.export" label="PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
           <Button v-if="auth.can('quotes.create')" label="Dupliquer" icon="pi pi-copy" severity="secondary" outlined @click="duplicate" />
@@ -432,6 +439,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
               <Tab v-if="quote.expenses !== undefined" value="expenses">Dépenses <span v-if="quote.expenses.length" class="count">{{ quote.expenses.length }}</span></Tab>
               <Tab value="delivery">Bordereaux <span v-if="quote.delivery_notes?.length" class="count">{{ quote.delivery_notes.length }}</span></Tab>
               <Tab value="proposal">Proposition technique</Tab>
+              <Tab v-if="quote.invoices !== undefined" value="invoices">Factures <span v-if="quote.invoices.length" class="count">{{ quote.invoices.length }}</span></Tab>
               <Tab value="emails">Envois <span v-if="quote.emails?.length" class="count">{{ quote.emails.length }}</span></Tab>
             </TabList>
             <TabPanels>
@@ -446,6 +454,30 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
               </TabPanel>
               <TabPanel value="proposal">
                 <QuoteProposalPanel :quote="quote" :can-edit="quote.can.update" :can-see-prices="quote.can.export" :busy="busy" @run="(a) => run(a)" @pdf="openProposalPdf" />
+              </TabPanel>
+              <TabPanel v-if="quote.invoices !== undefined" value="invoices">
+                <div class="panel">
+                  <table v-if="quote.invoices.length" class="list">
+                    <thead><tr><th>Numéro</th><th>Titre</th><th>Statut</th><th class="num">Hors taxes</th><th class="num">Total</th><th class="num">Réglé</th></tr></thead>
+                    <tbody>
+                      <tr v-for="i in quote.invoices" :key="i.id" class="clickable" @click="router.push({ name: 'invoice', params: { id: i.id } })">
+                        <td><strong v-if="i.number">{{ i.number }}</strong><span v-else class="muted">Brouillon</span></td>
+                        <td>{{ i.title }}</td>
+                        <td><Tag :value="i.status.label" :severity="invoiceStatusSeverity(i.status.value)" /></td>
+                        <td class="num">{{ money(i.subtotal) }}</td>
+                        <td class="num">{{ money(i.total) }}</td>
+                        <td class="num">{{ money(i.paid_amount) }}</td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr><td colspan="3">Facturé (hors taxes, hors annulées)</td><td class="num">{{ money(quote.invoiced_net) }}</td><td colspan="2" /></tr>
+                      <tr class="strong"><td colspan="3">Reste à facturer</td><td class="num">{{ money(quote.remaining_to_invoice) }}</td><td colspan="2" /></tr>
+                    </tfoot>
+                  </table>
+                  <p v-else class="muted">Aucune facture pour ce devis.</p>
+                  <Button v-if="canInvoice" label="Nouvelle facture" icon="pi pi-plus" size="small" @click="invoiceOpen = true" />
+                  <p v-else-if="quote.status.value !== 'accepted'" class="muted small">Un devis se facture une fois accepté.</p>
+                </div>
               </TabPanel>
               <TabPanel value="emails">
                 <table v-if="quote.emails?.length" class="list">
@@ -536,6 +568,13 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
       </div>
 
       <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
+      <InvoiceCreateDialog
+        v-if="canInvoice"
+        v-model:visible="invoiceOpen"
+        :quote="quote"
+        :currency="currency"
+        @created="(i) => router.push({ name: 'invoice', params: { id: i.id } })"
+      />
       <QuoteTemplatePicker v-model:visible="pickerOpen" :sections="sections" :currency="currency" :show-prices="showPrices" @insert="insertTemplate" />
       <Dialog v-model:visible="templateDialog" header="Enregistrer la section comme modèle" modal :style="{ width: '460px' }">
         <div class="form-grid">
@@ -666,6 +705,10 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
 
 .negative {
   color: var(--p-red-500);
+}
+
+tr.clickable {
+  cursor: pointer;
 }
 
 .settings {

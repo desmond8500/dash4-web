@@ -81,6 +81,19 @@ export const router = createRouter({
           meta: { title: 'Devis', permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'factures',
+          name: 'invoices',
+          component: () => import('@/views/InvoicesView.vue'),
+          meta: { title: 'Factures', permissions: ['invoices.view'] },
+        },
+        {
+          path: 'factures/:id(\\d+)',
+          name: 'invoice',
+          component: () => import('@/views/InvoiceDetailView.vue'),
+          props: true,
+          meta: { title: 'Facture', permissions: ['invoices.view'] },
+        },
+        {
           path: 'contacts',
           name: 'contacts',
           component: () => import('@/views/ContactsView.vue'),
