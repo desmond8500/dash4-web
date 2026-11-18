@@ -68,6 +68,12 @@ export const router = createRouter({
           meta: { title: 'Devis', permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'devis/modeles',
+          name: 'quote-templates',
+          component: () => import('@/views/QuoteTemplatesView.vue'),
+          meta: { title: 'Modèles de devis', permissions: ['quotes.create', 'quotes.update', 'quotes.update.own'] },
+        },
+        {
           path: 'devis/:id(\\d+)',
           name: 'quote',
           component: () => import('@/views/QuoteDetailView.vue'),

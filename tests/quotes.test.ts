@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Quote } from '@dash4/shared'
 import { visibleMenu } from '../src/menu'
-import { coefficientLabel, linePrice, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
+import { coefficientLabel, linePrice, parseEmails, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
 
 const quote = (status: Quote['status']['value'], can: Partial<Quote['can']> = {}) =>
   ({
@@ -53,5 +53,15 @@ describe('tri des lignes par catégorie', () => {
 
   it('garde l\'ordre actuel dans une même catégorie', () => {
     expect(sortedByCategory([line(7, 'device'), line(8, 'central'), line(9, 'device'), line(10, 'central')])).toEqual([8, 10, 7, 9])
+  })
+})
+
+describe('destinataires de l\'envoi par e-mail', () => {
+  it('sépare les adresses valides des autres, sans doublon de casse', () => {
+    expect(parseEmails(' Client@Example.sn, direction@example.sn; pas-une-adresse ')).toEqual({
+      valid: ['client@example.sn', 'direction@example.sn'],
+      invalid: ['pas-une-adresse'],
+    })
+    expect(parseEmails('')).toEqual({ valid: [], invalid: [] })
   })
 })

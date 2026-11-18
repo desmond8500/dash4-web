@@ -94,7 +94,16 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Devis</h1>
-      <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" @click="createOpen = true" />
+      <div class="header-actions">
+        <Button
+          v-if="auth.canAny(['quotes.create', 'quotes.update', 'quotes.update.own'])"
+          label="Modèles"
+          icon="pi pi-clone"
+          severity="secondary"
+          @click="router.push({ name: 'quote-templates' })"
+        />
+        <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" @click="createOpen = true" />
+      </div>
     </div>
 
     <div class="filters">
@@ -121,6 +130,11 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .filters {
   display: flex;
   gap: 0.75rem;

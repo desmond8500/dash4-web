@@ -76,3 +76,13 @@ export function sortedByCategory(lines: Array<Pick<QuoteLine, 'id' | 'category'>
     )
     .map(({ line }) => line.id)
 }
+
+/** Adresses e-mail saisies (séparées par des virgules, points-virgules ou espaces). */
+export function parseEmails(input: string): { valid: string[]; invalid: string[] } {
+  const parts = input
+    .split(/[\s,;]+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  const ok = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+  return { valid: parts.filter(ok).map((e) => e.toLowerCase()), invalid: parts.filter((e) => !ok(e)) }
+}

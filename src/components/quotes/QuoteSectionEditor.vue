@@ -21,6 +21,9 @@ const props = defineProps<{
   editable: boolean
   editPrices: boolean
   showPrices: boolean
+  /** Le texte de proposition technique reste modifiable sur un devis accepté. */
+  canEditProposal: boolean
+  canSaveTemplate: boolean
   currency: Currency
   first: boolean
   last: boolean
@@ -33,6 +36,8 @@ const emit = defineEmits<{
   updateLine: [lineId: number, payload: Partial<QuoteLinePayload>]
   removeLine: [lineId: number]
   orderLines: [ids: number[]]
+  saveProposal: [text: string | null]
+  saveAsTemplate: []
 }>()
 
 const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLineCategory, string]>).map(
@@ -41,6 +46,16 @@ const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLi
 
 const title = ref(props.section.title)
 watch(() => props.section.title, (t) => (title.value = t))
+
+// Proposition technique de la section
+const proposal = ref(props.section.proposal ?? '')
+const proposalOpen = ref(!!props.section.proposal)
+watch(() => props.section.proposal, (p) => (proposal.value = p ?? ''))
+function saveProposal(): void {
+  const text = proposal.value.trim()
+  if (text === (props.section.proposal ?? '').trim()) return
+  emit('saveProposal', text || null)
+}
 
 // Copie modifiable des lignes, remise à jour à chaque réponse de l'API
 type Draft = { designation: string; reference: string; category: QuoteLineCategory; unit: string; quantity: number; unit_cost: number; coefficient: number }
@@ -175,6 +190,7 @@ const money = (v: number) => formatMoney(v, props.currency)
           title="Centrale, organes, câble, accessoires, main-d'œuvre, autre"
           @click="sortByCategory"
         />
+        <Button v-if="props.canSaveTemplate" icon="pi pi-bookmark" text rounded size="small" title="Enregistrer comme modèle" aria-label="Enregistrer comme modèle" :disabled="!props.section.lines.length" @click="emit('saveAsTemplate')" />
         <Button icon="pi pi-arrow-up" text rounded size="small" :disabled="props.first" aria-label="Monter la section" @click="emit('moveSection', -1)" />
         <Button icon="pi pi-arrow-down" text rounded size="small" :disabled="props.last" aria-label="Descendre la section" @click="emit('moveSection', 1)" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer la section" @click="emit('removeSection')" />
@@ -300,6 +316,24 @@ const money = (v: number) => formatMoney(v, props.currency)
         </tr>
       </tfoot>
     </table>
+    <div class="proposal">
+      <button v-if="!proposalOpen" type="button" class="link small" @click="proposalOpen = true">
+        <i class="pi pi-align-left" /> {{ props.canEditProposal ? 'Ajouter la proposition technique de cette section' : '' }}
+      </button>
+      <template v-else>
+        <label class="muted small" :for="`proposal-${props.section.id}`">Proposition technique</label>
+        <Textarea
+          :id="`proposal-${props.section.id}`"
+          v-model="proposal"
+          rows="2"
+          auto-resize
+          class="full"
+          placeholder="Décrivez la solution : matériel, fonctionnement, garanties… (imprimé dans la proposition technique)"
+          :disabled="!props.canEditProposal"
+          @change="saveProposal"
+        />
+      </template>
+    </div>
     <p v-if="props.editable && !props.editPrices" class="muted hint">
       Vous rédigez les lignes ; le chiffrage (coût et coefficient) revient à un commercial ou au manager.
     </p>
@@ -402,6 +436,18 @@ header {
 
 .empty {
   padding: 0.75rem 0.25rem;
+}
+
+.proposal {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.proposal :deep(textarea) {
+  width: 100%;
 }
 
 .hint {

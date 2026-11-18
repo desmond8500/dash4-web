@@ -21,13 +21,21 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError, EDITABLE_QUOTE_STATUSES, formatMoney, TAX_MODE_LABELS } from '@dash4/shared'
-import type { BankAccount, Quote, QuoteLinePayload, QuoteSection, TaxMode } from '@dash4/shared'
+import type { BankAccount, Quote, QuoteLinePayload, QuoteSection, QuoteSystem, TaxMode } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import QuoteSectionEditor from '@/components/quotes/QuoteSectionEditor.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import QuoteDepositsPanel from '@/components/quotes/QuoteDepositsPanel.vue'
+import QuoteExpensesPanel from '@/components/quotes/QuoteExpensesPanel.vue'
+import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel.vue'
+import QuoteProposalPanel from '@/components/quotes/QuoteProposalPanel.vue'
+import QuoteEmailDialog from '@/components/quotes/QuoteEmailDialog.vue'
+import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
+import Dialog from 'primevue/dialog'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
+import { formatDateTime } from '@/utils/clientRequests'
 import { quoteStatusSeverity, statusActions, type StatusAction } from '@/utils/quotes'
 
 const props = defineProps<{ id: string }>()
@@ -208,6 +216,58 @@ function remove(): void {
   })
 }
 
+// Étape 2 : e-mail, modèles, proposition technique
+const emailOpen = ref(false)
+const pickerOpen = ref(false)
+const canManageTemplates = computed(() => auth.can('quotes.update') && auth.can('costs.view'))
+const templateDialog = ref(false)
+const templateSection = ref<QuoteSection | null>(null)
+const templateName = ref('')
+const templateSystem = ref<number | null>(null)
+const systems = ref<QuoteSystem[]>([])
+
+function onSent(q: Quote): void {
+  setQuote(q)
+  toast.add({ severity: 'success', summary: 'Devis envoyé', detail: q.emails?.[0]?.to.join(', '), life: 4000 })
+}
+
+function insertTemplate(templateId: number, sectionId: number | undefined): void {
+  void run(() => api.quotes.insertTemplate(id(), templateId, sectionId), 'Insertion impossible')
+}
+
+async function openSaveTemplate(section: QuoteSection): Promise<void> {
+  templateSection.value = section
+  templateName.value = section.title
+  templateSystem.value = null
+  templateDialog.value = true
+  systems.value = (await api.quoteTemplates.catalog()).systems
+}
+
+async function saveTemplate(): Promise<void> {
+  if (!templateSection.value || !templateName.value.trim()) return
+  try {
+    await api.quoteTemplates.fromSection(templateSection.value.id, { name: templateName.value.trim(), quote_system_id: templateSystem.value })
+    templateDialog.value = false
+    toast.add({ severity: 'success', summary: 'Modèle enregistré', detail: templateName.value, life: 3000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Enregistrement impossible', detail: (e as Error).message, life: 5000 })
+  }
+}
+
+async function openProposalPdf(): Promise<void> {
+  if (!quote.value) return
+  busy.value = true
+  try {
+    const url = URL.createObjectURL(await api.quotes.proposalPdf(quote.value.id))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'PDF impossible', detail: (e as Error).message, life: 5000 })
+  } finally {
+    busy.value = false
+  }
+}
+
 // Sections et lignes
 const newSection = ref('')
 function addSection(): void {
@@ -264,6 +324,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           </span>
         </div>
         <div class="actions">
+          <Button v-if="quote.can.export && quote.can.update" label="Envoyer" icon="pi pi-send" @click="emailOpen = true" />
           <Button v-if="quote.can.export" label="PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
           <Button v-if="auth.can('quotes.create')" label="Dupliquer" icon="pi pi-copy" severity="secondary" outlined @click="duplicate" />
           <Button v-if="quote.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
@@ -328,6 +389,10 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             :currency="currency"
             :first="index === 0"
             :last="index === sections.length - 1"
+            :can-edit-proposal="quote.can.update"
+            :can-save-template="canManageTemplates"
+            @save-proposal="(text) => run(() => api.quotes.setSectionProposal(section.id, text))"
+            @save-as-template="openSaveTemplate(section)"
             @update-section="(p) => updateSection(section.id, p)"
             @remove-section="removeSection(section)"
             @move-section="(d) => moveSection(index, d)"
@@ -340,6 +405,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           <form v-if="editable" class="new-section" @submit.prevent="addSection">
             <InputText v-model="newSection" placeholder="Nouvelle section (ex. : Câblage, Main-d'œuvre…)" />
             <Button type="submit" label="Ajouter la section" icon="pi pi-plus" severity="secondary" :disabled="!newSection.trim()" />
+            <Button label="Insérer un modèle" icon="pi pi-clone" severity="secondary" outlined @click="pickerOpen = true" />
           </form>
 
           <Card>
@@ -357,13 +423,45 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             </template>
           </Card>
 
-          <Tabs v-model:value="tab">
+          <Tabs v-model:value="tab" scrollable>
             <TabList>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Documents</Tab>
               <Tab value="links">Liens</Tab>
+              <Tab v-if="showPrices" value="deposits">Acomptes <span v-if="quote.deposits?.length" class="count">{{ quote.deposits.length }}</span></Tab>
+              <Tab v-if="quote.expenses !== undefined" value="expenses">Dépenses <span v-if="quote.expenses.length" class="count">{{ quote.expenses.length }}</span></Tab>
+              <Tab value="delivery">Bordereaux <span v-if="quote.delivery_notes?.length" class="count">{{ quote.delivery_notes.length }}</span></Tab>
+              <Tab value="proposal">Proposition technique</Tab>
+              <Tab value="emails">Envois <span v-if="quote.emails?.length" class="count">{{ quote.emails.length }}</span></Tab>
             </TabList>
             <TabPanels>
+              <TabPanel v-if="showPrices" value="deposits">
+                <QuoteDepositsPanel :quote="quote" :currency="currency" :can-edit="quote.can.update" @run="(a) => run(a)" />
+              </TabPanel>
+              <TabPanel v-if="quote.expenses !== undefined" value="expenses">
+                <QuoteExpensesPanel :quote="quote" :currency="currency" :can-edit="quote.can.update" @run="(a) => run(a)" />
+              </TabPanel>
+              <TabPanel value="delivery">
+                <QuoteDeliveryNotesPanel :quote="quote" :can-edit="quote.can.update" @run="(a) => run(a)" />
+              </TabPanel>
+              <TabPanel value="proposal">
+                <QuoteProposalPanel :quote="quote" :can-edit="quote.can.update" :can-see-prices="quote.can.export" :busy="busy" @run="(a) => run(a)" @pdf="openProposalPdf" />
+              </TabPanel>
+              <TabPanel value="emails">
+                <table v-if="quote.emails?.length" class="list">
+                  <thead><tr><th>Date</th><th>Destinataires</th><th>Objet</th><th>Pièces jointes</th><th>Par</th></tr></thead>
+                  <tbody>
+                    <tr v-for="m in quote.emails" :key="m.id">
+                      <td>{{ formatDateTime(m.sent_at) }}</td>
+                      <td>{{ m.to.join(', ') }}<div v-if="m.cc.length" class="muted small">Copie : {{ m.cc.join(', ') }}</div></td>
+                      <td>{{ m.subject }}</td>
+                      <td class="small">{{ m.attachments.join(', ') }}</td>
+                      <td>{{ m.sender?.full_name ?? '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p v-else class="muted">Ce devis n'a pas encore été envoyé par e-mail.</p>
+              </TabPanel>
               <TabPanel v-for="kind in (['notes', 'documents', 'links'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="quotes" :id="quote.id" :can-add="quote.can.update" :can-manage="quote.can.delete" />
               </TabPanel>
@@ -436,6 +534,26 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           </Card>
         </aside>
       </div>
+
+      <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
+      <QuoteTemplatePicker v-model:visible="pickerOpen" :sections="sections" :currency="currency" :show-prices="showPrices" @insert="insertTemplate" />
+      <Dialog v-model:visible="templateDialog" header="Enregistrer la section comme modèle" modal :style="{ width: '460px' }">
+        <div class="form-grid">
+          <div class="form-field form-field--full">
+            <label for="tpl-name">Nom du modèle</label>
+            <InputText id="tpl-name" v-model="templateName" autofocus />
+          </div>
+          <div class="form-field form-field--full">
+            <label for="tpl-system">Système</label>
+            <Select id="tpl-system" v-model="templateSystem" :options="[{ id: null, name: 'Sans système' }, ...systems]" option-label="name" option-value="id" />
+            <small class="muted">Les systèmes se créent dans Devis → Modèles.</small>
+          </div>
+        </div>
+        <template #footer>
+          <Button label="Annuler" severity="secondary" text @click="templateDialog = false" />
+          <Button label="Enregistrer" icon="pi pi-check" :disabled="!templateName.trim()" @click="saveTemplate" />
+        </template>
+      </Dialog>
     </template>
   </div>
 </template>
@@ -509,6 +627,14 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
 
 .new-section input {
   flex: 1;
+}
+
+.count {
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  font-size: 0.75rem;
 }
 
 .totals {
