@@ -39,6 +39,7 @@ const busy = ref(false)
 const noteForm = ref({ body: '', is_pinned: false })
 const linkForm = ref({ label: '', url: '' })
 const fileInput = ref<HTMLInputElement | null>(null)
+const acceptedFiles = DOCUMENT_EXTENSIONS.map((ext) => `.${ext}`).join(',')
 const editingNote = ref<number | null>(null)
 const editingBody = ref('')
 
@@ -252,7 +253,7 @@ const removeDocument = (doc: Document) =>
       <div v-if="props.canAdd" class="add">
         <Button label="Ajouter des fichiers" icon="pi pi-upload" size="small" :loading="busy" @click="fileInput?.click()" />
         <small class="muted">PDF, images, Office, DWG/DXF, ZIP — 20 Mo par fichier</small>
-        <input ref="fileInput" type="file" multiple hidden :accept="DOCUMENT_EXTENSIONS.map((e) => '.' + e).join(',')" @change="onFiles" />
+        <input ref="fileInput" type="file" multiple hidden :accept="acceptedFiles" @change="onFiles" />
       </div>
       <p v-if="!loading && !documents.length" class="muted">Aucun document.</p>
       <div v-for="doc in documents" :key="doc.id" class="line">
