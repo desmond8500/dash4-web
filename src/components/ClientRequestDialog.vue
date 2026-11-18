@@ -33,7 +33,7 @@ import { formatDateTime } from '@/utils/clientRequests'
  */
 const props = defineProps<{ request: ClientRequest | null; clientId?: number | null }>()
 const visible = defineModel<boolean>('visible', { required: true })
-const emit = defineEmits<{ saved: [request: ClientRequest]; converted: [projectId: number] }>()
+const emit = defineEmits<{ saved: [request: ClientRequest]; converted: [target: { type: 'project' | 'quote'; id: number }] }>()
 
 const auth = useAuthStore()
 const isEdit = computed(() => props.request !== null)
@@ -112,18 +112,16 @@ async function searchClients(event: AutoCompleteCompleteEvent): Promise<void> {
 }
 
 // Transformation en projet
-const canConvert = computed(
-  () =>
-    !!props.request &&
-    !props.request.converted_to &&
-    auth.can('client_requests.convert') &&
-    auth.can('projects.create'),
-)
+const convertible = computed(() => !!props.request && !props.request.converted_to && auth.can('client_requests.convert'))
+const canConvert = computed(() => convertible.value && auth.can('projects.create'))
+const canConvertQuote = computed(() => convertible.value && auth.can('quotes.create'))
+const convertType = ref<'project' | 'quote'>('project')
 const convertOpen = ref(false)
 const convertName = ref('')
 const converting = ref(false)
 
-function openConvert(): void {
+function openConvert(type: 'project' | 'quote' = 'project'): void {
+  convertType.value = type
   const body = props.request?.body.replace(/\s+/g, ' ').trim() ?? ''
   convertName.value = body.length > 80 ? `${body.slice(0, 79)}…` : body
   convertOpen.value = true
@@ -141,14 +139,15 @@ async function convert(): Promise<void> {
   converting.value = true
   try {
     const result = await api.clientRequests.convert(props.request.id, {
-      type: 'project',
+      type: convertType.value,
       name: convertName.value.trim() || undefined,
       client_id: client.id,
     })
     convertOpen.value = false
     visible.value = false
     emit('saved', result.request)
-    emit('converted', result.project.id)
+    const created = result.quote ?? result.project
+    if (created) emit('converted', { type: convertType.value, id: created.id })
   } catch (e) {
     generalError.value = e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : 'Transformation impossible.'
     convertOpen.value = false
@@ -240,10 +239,13 @@ async function save(): Promise<void> {
         <small v-if="fieldError('body')" class="field-error">{{ fieldError('body') }}</small>
       </div>
 
-      <Message v-if="props.request?.converted_to?.type === 'project'" class="form-field--full" severity="success" :closable="false">
-        Transformée en projet —
-        <RouterLink :to="{ name: 'project', params: { id: props.request.converted_to.id } }" @click="visible = false">
-          voir le projet
+      <Message v-if="props.request?.converted_to" class="form-field--full" severity="success" :closable="false">
+        Transformée en {{ props.request.converted_to.type === 'quote' ? 'devis' : 'projet' }} —
+        <RouterLink
+          :to="{ name: props.request.converted_to.type === 'quote' ? 'quote' : 'project', params: { id: props.request.converted_to.id } }"
+          @click="visible = false"
+        >
+          l'ouvrir
         </RouterLink>
       </Message>
 
@@ -352,32 +354,27 @@ async function save(): Promise<void> {
     </form>
 
     <template #footer>
-      <Button
-        v-if="canConvert"
-        label="Transformer en projet"
-        icon="pi pi-briefcase"
-        severity="secondary"
-        outlined
-        class="convert"
-        @click="openConvert"
-      />
+      <div class="convert">
+        <Button v-if="canConvertQuote" label="En devis" icon="pi pi-file-edit" severity="secondary" outlined @click="openConvert('quote')" />
+        <Button v-if="canConvert" label="En projet" icon="pi pi-briefcase" severity="secondary" outlined @click="openConvert('project')" />
+      </div>
       <Button label="Annuler" severity="secondary" text @click="visible = false" />
       <Button label="Enregistrer" icon="pi pi-check" type="submit" form="client-request-form" :loading="saving" />
     </template>
   </Dialog>
 
-  <Dialog v-model:visible="convertOpen" header="Transformer en projet" modal :style="{ width: '480px' }" :breakpoints="{ '520px': '95vw' }">
+  <Dialog v-model:visible="convertOpen" :header="convertType === 'quote' ? 'Transformer en devis' : 'Transformer en projet'" modal :style="{ width: '480px' }" :breakpoints="{ '520px': '95vw' }">
     <div class="form-field">
-      <label for="convert-name">Nom du projet</label>
+      <label for="convert-name">{{ convertType === 'quote' ? 'Objet du devis' : 'Nom du projet' }}</label>
       <InputText id="convert-name" v-model="convertName" autofocus />
       <small class="muted">
         Client : {{ form.client && typeof form.client === 'object' ? form.client.name : 'à choisir dans la demande' }}.
-        La demande passera à « Traitée » et gardera le lien vers le projet.
+        La demande passera à « Traitée » et gardera le lien vers {{ convertType === 'quote' ? 'le devis' : 'le projet' }}.
       </small>
     </div>
     <template #footer>
       <Button label="Annuler" severity="secondary" text @click="convertOpen = false" />
-      <Button label="Créer le projet" icon="pi pi-check" :loading="converting" @click="convert" />
+      <Button :label="convertType === 'quote' ? 'Créer le devis' : 'Créer le projet'" icon="pi pi-check" :loading="converting" @click="convert" />
     </template>
   </Dialog>
 </template>
@@ -385,6 +382,8 @@ async function save(): Promise<void> {
 <style scoped>
 .convert {
   margin-right: auto;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .meta {

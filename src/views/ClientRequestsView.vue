@@ -195,7 +195,7 @@ onMounted(() => {
       v-model:visible="dialogOpen"
       :request="edited"
       @saved="onSaved"
-      @converted="(id) => router.push({ name: 'project', params: { id } })"
+      @converted="(t) => router.push({ name: t.type === 'quote' ? 'quote' : 'project', params: { id: t.id } })"
     />
   </div>
 </template>

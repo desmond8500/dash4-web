@@ -10,7 +10,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Client, ClientRequest, Contact, Project } from '@dash4/shared'
+import type { Client, ClientRequest, Contact, Project, Quote } from '@dash4/shared'
 import type { QuickAction } from '@/utils/clientRequests'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -21,6 +21,9 @@ import ClientRequestTable from '@/components/ClientRequestTable.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import QuoteTable from '@/components/quotes/QuoteTable.vue'
+import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
+import { useSettingsStore } from '@/stores/settings'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -66,6 +69,24 @@ watch(() => props.id, loadProjects, { immediate: true })
 function onProjectSaved(project: Project): void {
   void router.push({ name: 'project', params: { id: project.id } })
 }
+
+// Devis du client
+const settings = useSettingsStore()
+const canSeeQuotes = computed(() => auth.canAny(['quotes.view', 'quotes.view.own']))
+const quotes = ref<Quote[]>([])
+const quoteDialog = ref(false)
+
+async function loadQuotes(): Promise<void> {
+  if (!canSeeQuotes.value) return
+  try {
+    quotes.value = (await api.quotes.list({ client_id: Number(props.id), per_page: 100 })).data
+  } catch {
+    quotes.value = []
+  }
+}
+
+watch(() => props.id, loadQuotes, { immediate: true })
+void settings.load()
 
 // Historique des demandes du client (TODO §3)
 const requestsStore = useClientRequestsStore()
@@ -440,6 +461,19 @@ function contactEmails(contact: Contact): string[] {
           </Column>
         </DataTable>
         <ProjectFormDialog v-model:visible="projectDialog" :project="null" :client-id="client.id" @saved="onProjectSaved" />
+      </template>
+
+      <template v-if="canSeeQuotes">
+        <div class="page-header">
+          <h2>Devis</h2>
+          <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" size="small" @click="quoteDialog = true" />
+        </div>
+        <QuoteTable :quotes="quotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
+        <QuoteCreateDialog
+          v-model:visible="quoteDialog"
+          :client-id="client.id"
+          @created="(q) => router.push({ name: 'quote', params: { id: q.id } })"
+        />
       </template>
 
       <Tabs v-model:value="attachmentsTab">

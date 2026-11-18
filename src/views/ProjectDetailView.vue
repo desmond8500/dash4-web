@@ -14,12 +14,15 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Project } from '@dash4/shared'
+import type { Project, Quote } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import QuoteTable from '@/components/quotes/QuoteTable.vue'
+import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
+import { useSettingsStore } from '@/stores/settings'
 import { logoError, LOGO_TYPES } from '@/utils/clients'
 import { mapsUrl, periodLabel, projectStatusSeverity } from '@/utils/projects'
 
@@ -38,6 +41,24 @@ const logoInput = ref<HTMLInputElement | null>(null)
 const logoBusy = ref(false)
 
 const canUpdate = computed(() => project.value?.can_update ?? false)
+
+// Devis du projet
+const settings = useSettingsStore()
+const canSeeQuotes = computed(() => auth.canAny(['quotes.view', 'quotes.view.own']))
+const quotes = ref<Quote[]>([])
+const quoteDialog = ref(false)
+
+async function loadQuotes(): Promise<void> {
+  if (!canSeeQuotes.value) return
+  try {
+    quotes.value = (await api.quotes.list({ project_id: Number(props.id), per_page: 100 })).data
+  } catch {
+    quotes.value = []
+  }
+}
+
+watch(() => props.id, loadQuotes, { immediate: true })
+void settings.load()
 const canDelete = computed(() => auth.can('projects.delete'))
 const map = computed(() =>
   project.value ? mapsUrl(project.value.latitude, project.value.longitude, project.value.address) : null,
@@ -197,7 +218,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           <Tab value="documents">
             Documents <Badge v-if="project.documents_count" :value="project.documents_count" severity="secondary" />
           </Tab>
-          <Tab value="quotes" disabled>Devis</Tab>
+          <Tab v-if="canSeeQuotes" value="quotes">Devis <Badge v-if="quotes.length" :value="quotes.length" severity="secondary" /></Tab>
           <Tab value="tasks" disabled>Tâches</Tab>
           <Tab value="journals" disabled>Journaux</Tab>
         </TabList>
@@ -212,9 +233,20 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
               @changed="onCount(kind, $event)"
             />
           </TabPanel>
+          <TabPanel v-if="canSeeQuotes" value="quotes">
+            <div class="tab-actions">
+              <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" size="small" @click="quoteDialog = true" />
+            </div>
+            <QuoteTable :quotes="quotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
+            <QuoteCreateDialog
+              v-model:visible="quoteDialog"
+              :project-id="project.id"
+              @created="(q) => router.push({ name: 'quote', params: { id: q.id } })"
+            />
+          </TabPanel>
         </TabPanels>
       </Tabs>
-      <p class="muted soon">Les onglets Devis, Tâches et Journaux s'activeront avec ces modules.</p>
+      <p class="muted soon">Les onglets Tâches et Journaux s'activeront avec ces modules.</p>
 
       <ProjectFormDialog v-model:visible="editOpen" :project="project" @saved="load" />
     </template>
@@ -292,6 +324,12 @@ dd {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.9rem;
+}
+
+.tab-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
 }
 
 .soon {
