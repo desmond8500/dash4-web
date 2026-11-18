@@ -146,6 +146,25 @@ export const router = createRouter({
           meta: { title: 'Achat', permissions: ['purchases.view', 'purchases.view.own'] },
         },
         {
+          path: 'depenses',
+          name: 'expenses',
+          component: () => import('@/views/ExpensesView.vue'),
+          meta: { title: 'Dépenses', permissions: ['accounting.view', 'accounting.view.own'] },
+        },
+        {
+          path: 'depenses/caisses/:id(\\d+)',
+          name: 'expense-space',
+          component: () => import('@/views/ExpenseSpaceView.vue'),
+          props: true,
+          meta: { title: 'Caisse', permissions: ['accounting.view', 'accounting.view.own'] },
+        },
+        {
+          path: 'comptabilite',
+          name: 'accounting',
+          component: () => import('@/views/AccountingView.vue'),
+          meta: { title: 'Comptabilité', permissions: ['accounting.view'] },
+        },
+        {
           path: 'contacts',
           name: 'contacts',
           component: () => import('@/views/ContactsView.vue'),
