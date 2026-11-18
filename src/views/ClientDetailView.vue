@@ -10,12 +10,16 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Client, Contact } from '@dash4/shared'
+import type { Client, ClientRequest, Contact } from '@dash4/shared'
+import type { QuickAction } from '@/utils/clientRequests'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientFormDialog from '@/components/ClientFormDialog.vue'
 import ContactFormDialog from '@/components/ContactFormDialog.vue'
 import ClientLogo from '@/components/ClientLogo.vue'
+import ClientRequestTable from '@/components/ClientRequestTable.vue'
+import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
+import { useClientRequestsStore } from '@/stores/clientRequests'
 import { logoError, LOGO_TYPES, statusSeverity } from '@/utils/clients'
 import { telHref } from '@/utils/contactLists'
 
@@ -33,6 +37,41 @@ const contactDialog = ref(false)
 const editedContact = ref<Contact | null>(null)
 
 const contacts = computed(() => client.value?.contacts ?? [])
+
+// Historique des demandes du client (TODO §3)
+const requestsStore = useClientRequestsStore()
+const canSeeRequests = computed(() => auth.can('client_requests.view'))
+const requests = ref<ClientRequest[]>([])
+const requestDialog = ref(false)
+const editedRequest = ref<ClientRequest | null>(null)
+
+async function loadRequests(): Promise<void> {
+  if (!canSeeRequests.value) return
+  try {
+    requests.value = (await api.clientRequests.list({ client_id: Number(props.id), per_page: 50 })).data
+  } catch {
+    requests.value = []
+  }
+}
+
+watch(() => [props.id, requestsStore.version], loadRequests, { immediate: true })
+
+function openRequest(request: ClientRequest): void {
+  editedRequest.value = request
+  requestDialog.value = true
+}
+
+async function onRequestAction(request: ClientRequest, action: QuickAction): Promise<void> {
+  try {
+    await api.clientRequests.update(request.id, {
+      status: action.status,
+      ...(action.assignToMe && auth.user ? { assigned_to: auth.user.id } : {}),
+    })
+    requestsStore.changed()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Modification impossible', detail: (e as Error).message, life: 5000 })
+  }
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -337,6 +376,21 @@ function contactEmails(contact: Contact): string[] {
           </template>
         </Column>
       </DataTable>
+
+      <template v-if="canSeeRequests">
+        <div class="page-header">
+          <h2>Demandes</h2>
+          <Button
+            v-if="auth.can('client_requests.create')"
+            label="Noter une demande"
+            icon="pi pi-plus"
+            size="small"
+            @click="requestsStore.openQuick(client.id)"
+          />
+        </div>
+        <ClientRequestTable :requests="requests" hide-client @open="openRequest" @action="onRequestAction" />
+        <ClientRequestDialog v-model:visible="requestDialog" :request="editedRequest" @saved="requestsStore.changed()" />
+      </template>
 
       <ClientFormDialog v-model:visible="clientDialog" :client="client" @saved="onClientSaved" @logo-failed="onLogoFailed" />
       <ContactFormDialog

@@ -7,11 +7,20 @@ export interface MenuEntry {
   icon: string
   to: string
   permissions: string[]
+  /** Compteur affiché à côté du libellé. */
+  badge?: 'client_requests'
 }
 
 export const MENU: MenuEntry[] = [
   { label: 'Tableau de bord', icon: 'pi pi-home', to: '/', permissions: ['dashboard.view', 'dashboard.view.own'] },
   { label: 'Clients', icon: 'pi pi-building', to: '/clients', permissions: ['clients.view', 'clients.view.own'] },
+  {
+    label: 'Demandes',
+    icon: 'pi pi-inbox',
+    to: '/demandes',
+    permissions: ['client_requests.view', 'client_requests.view.own'],
+    badge: 'client_requests',
+  },
   { label: 'Contacts', icon: 'pi pi-address-book', to: '/contacts', permissions: ['clients.view', 'clients.view.own'] },
   { label: 'Utilisateurs', icon: 'pi pi-users', to: '/utilisateurs', permissions: ['users.view'] },
 ]

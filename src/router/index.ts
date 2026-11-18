@@ -43,6 +43,12 @@ export const router = createRouter({
           meta: { title: 'Fiche client', permissions: ['clients.view', 'clients.view.own'] },
         },
         {
+          path: 'demandes',
+          name: 'client-requests',
+          component: () => import('@/views/ClientRequestsView.vue'),
+          meta: { title: 'Demandes clients', permissions: ['client_requests.view', 'client_requests.view.own'] },
+        },
+        {
           path: 'contacts',
           name: 'contacts',
           component: () => import('@/views/ContactsView.vue'),

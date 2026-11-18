@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
 import Drawer from 'primevue/drawer'
 import { useAuthStore } from '@/stores/auth'
-import { visibleMenu } from '@/menu'
+import { visibleMenu, type MenuEntry } from '@/menu'
+import { useClientRequestsStore } from '@/stores/clientRequests'
+import { useToast } from 'primevue/usetoast'
+import NotificationBell from '@/components/NotificationBell.vue'
+import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
+const requests = useClientRequestsStore()
+const toast = useToast()
+
+function badgeFor(entry: MenuEntry): number {
+  return entry.badge === 'client_requests' ? (requests.summary?.open ?? 0) : 0
+}
+
+function onRequestSaved(): void {
+  toast.add({ severity: 'success', summary: 'Demande notée', detail: 'Elle est dans la boîte « À traiter ».', life: 3000 })
+  requests.changed()
+}
+
+onMounted(() => requests.start())
+onUnmounted(() => requests.stop())
 
 const mobileMenuOpen = ref(false)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)
@@ -34,11 +52,26 @@ function toggleDark(): void {
 }
 
 async function logout(): Promise<void> {
+  requests.stop()
   await auth.logout()
   await router.push({ name: 'login' })
 }
 
 if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
+
+// Raccourci « N » : noter une demande, sauf pendant une saisie
+function onKey(event: KeyboardEvent): void {
+  const target = event.target as HTMLElement | null
+  const typing = target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+  if (event.key.toLowerCase() === 'n' && !typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    if (auth.can('client_requests.create') && !requests.quickOpen) {
+      event.preventDefault()
+      requests.openQuick()
+    }
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
@@ -49,6 +82,7 @@ if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
         <RouterLink v-for="entry in entries" :key="entry.to" :to="entry.to" class="nav-link">
           <i :class="entry.icon" />
           <span>{{ entry.label }}</span>
+          <span v-if="badgeFor(entry)" class="nav-badge">{{ badgeFor(entry) }}</span>
         </RouterLink>
       </nav>
     </aside>
@@ -64,6 +98,7 @@ if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
         >
           <i :class="entry.icon" />
           <span>{{ entry.label }}</span>
+          <span v-if="badgeFor(entry)" class="nav-badge">{{ badgeFor(entry) }}</span>
         </RouterLink>
       </nav>
     </Drawer>
@@ -79,6 +114,15 @@ if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
           @click="mobileMenuOpen = true"
         />
         <span class="spacer" />
+        <Button
+          v-if="auth.can('client_requests.create')"
+          label="Demande"
+          icon="pi pi-plus"
+          size="small"
+          title="Noter une demande client (raccourci : N)"
+          @click="requests.openQuick()"
+        />
+        <NotificationBell />
         <button type="button" class="user-button" @click="userMenu?.toggle($event)">
           <Avatar :label="initials" shape="circle" />
           <span class="user-name">{{ auth.user?.full_name }}</span>
@@ -90,6 +134,13 @@ if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
       <main class="content">
         <RouterView />
       </main>
+
+      <ClientRequestDialog
+        v-model:visible="requests.quickOpen"
+        :request="null"
+        :client-id="requests.quickClientId"
+        @saved="onRequestSaved"
+      />
     </div>
   </div>
 </template>
@@ -125,6 +176,18 @@ if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
   border-radius: 8px;
   color: var(--p-text-color);
   text-decoration: none;
+}
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 1.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
 }
 
 .nav-link:hover {
