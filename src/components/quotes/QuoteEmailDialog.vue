@@ -7,6 +7,7 @@ import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Chip from 'primevue/chip'
+import Select from 'primevue/select'
 import { ApiError } from '@dash4/shared'
 import type { Quote, QuoteEmailDraft } from '@dash4/shared'
 import { api } from '@/services/api'
@@ -25,6 +26,12 @@ const ccInput = ref('')
 const subject = ref('')
 const message = ref('')
 const attachProposal = ref(false)
+const signatureId = ref<number | null>(null)
+const signatureOptions = computed(() => [
+  { id: null, name: 'Sans signature' },
+  ...(draft.value?.signatures ?? []).map((s) => ({ id: s.id, name: s.shared ? `${s.name} (entreprise)` : s.name })),
+])
+const signaturePreview = computed(() => draft.value?.signatures.find((s) => s.id === signatureId.value)?.preview ?? null)
 const error = ref<string | null>(null)
 const sending = ref(false)
 
@@ -40,6 +47,7 @@ watch(visible, async (open) => {
     draft.value = await api.quotes.emailDraft(props.quote.id)
     subject.value = draft.value.subject
     message.value = draft.value.message
+    signatureId.value = draft.value.default_signature_id
     if (draft.value.suggestions[0]) to.value = [draft.value.suggestions[0].email]
   } catch (e) {
     error.value = (e as Error).message
@@ -76,6 +84,7 @@ async function send(): Promise<void> {
       subject: subject.value.trim(),
       message: message.value,
       attach_proposal: attachProposal.value,
+      signature_id: signatureId.value,
     })
     visible.value = false
     emit('sent', quote)
@@ -125,6 +134,14 @@ async function send(): Promise<void> {
         <Textarea id="e-message" v-model="message" rows="8" auto-resize />
       </div>
       <div class="form-field form-field--full">
+        <label for="e-signature">Signature</label>
+        <Select id="e-signature" v-model="signatureId" :options="signatureOptions" option-label="name" option-value="id" />
+        <pre v-if="signaturePreview" class="signature">{{ signaturePreview }}</pre>
+        <small class="muted">
+          Vos signatures se gèrent dans <RouterLink :to="{ name: 'profile' }" @click="visible = false">Mon profil</RouterLink>.
+        </small>
+      </div>
+      <div class="form-field form-field--full">
         <span class="muted"><i class="pi pi-paperclip" /> {{ props.quote.number }}.pdf</span>
         <label class="suggestion">
           <Checkbox v-model="attachProposal" binary :disabled="!hasProposal" />
@@ -141,6 +158,16 @@ async function send(): Promise<void> {
 </template>
 
 <style scoped>
+.signature {
+  margin: 0.25rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--p-content-border-color);
+  font-family: inherit;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  color: var(--p-text-muted-color);
+}
+
 .suggestions {
   display: flex;
   flex-direction: column;

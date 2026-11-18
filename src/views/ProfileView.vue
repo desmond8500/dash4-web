@@ -2,6 +2,7 @@
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
 import { useAuthStore } from '@/stores/auth'
+import EmailSignaturesPanel from '@/components/EmailSignaturesPanel.vue'
 
 const auth = useAuthStore()
 </script>
@@ -31,6 +32,13 @@ const auth = useAuthStore()
           </dd>
         </dl>
         <p class="muted">La modification du profil et le CV arriveront avec l'espace personnel (V1.1).</p>
+      </template>
+    </Card>
+
+    <Card>
+      <template #title>Signatures d'e-mail</template>
+      <template #content>
+        <EmailSignaturesPanel />
       </template>
     </Card>
   </div>
