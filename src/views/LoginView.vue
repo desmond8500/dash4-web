@@ -7,7 +7,6 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { ApiError } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
-import { API_URL } from '@/services/api'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -61,8 +60,6 @@ async function submit(): Promise<void> {
 
       <Button type="submit" label="Se connecter" icon="pi pi-sign-in" :loading="loading" fluid />
 
-      <!-- PROVISOIRE : adresse de l'API affichée pour la mise en service, à retirer ensuite -->
-      <small class="muted api-url">Serveur : {{ API_URL }}</small>
     </form>
   </div>
 </template>
@@ -94,10 +91,5 @@ h1 {
 
 p {
   margin: 0;
-}
-
-.api-url {
-  text-align: center;
-  word-break: break-all;
 }
 </style>
