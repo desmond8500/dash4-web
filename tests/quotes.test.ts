@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Quote } from '@dash4/shared'
 import { visibleMenu } from '../src/menu'
-import { coefficientLabel, linePrice, quoteStatusSeverity, statusActions } from '../src/utils/quotes'
+import { coefficientLabel, linePrice, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
 
 const quote = (status: Quote['status']['value'], can: Partial<Quote['can']> = {}) =>
   ({
@@ -39,5 +39,19 @@ describe('devis', () => {
       visibleMenu((wanted) => wanted.some((p) => permissions.includes(p))).map((e) => e.to)
     expect(menuFor(['quotes.view.own'])).toContain('/devis')
     expect(menuFor(['clients.view'])).not.toContain('/devis')
+  })
+})
+
+describe('tri des lignes par catégorie', () => {
+  const line = (id: number, category: string) => ({ id, category: { value: category, label: category } }) as never
+
+  it('range centrale, organes, câble, accessoires, main-d\'œuvre puis autre', () => {
+    expect(
+      sortedByCategory([line(1, 'service'), line(2, 'cable'), line(3, 'central'), line(4, 'other'), line(5, 'device'), line(6, 'accessory')]),
+    ).toEqual([3, 5, 2, 6, 1, 4])
+  })
+
+  it('garde l\'ordre actuel dans une même catégorie', () => {
+    expect(sortedByCategory([line(7, 'device'), line(8, 'central'), line(9, 'device'), line(10, 'central')])).toEqual([8, 10, 7, 9])
   })
 })

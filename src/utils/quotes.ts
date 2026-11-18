@@ -1,5 +1,5 @@
 import { QUOTE_STATUS_LABELS, QUOTE_TRANSITIONS } from '@dash4/shared'
-import type { Quote, QuoteStatus } from '@dash4/shared'
+import type { Quote, QuoteLine, QuoteLineCategory, QuoteStatus } from '@dash4/shared'
 import type { Severity } from './clientRequests'
 
 export function quoteStatusSeverity(status: QuoteStatus): Severity {
@@ -57,4 +57,22 @@ export function statusLabel(status: QuoteStatus): string {
 /** Coefficient lisible : 1,5 → « × 1,5 ». */
 export function coefficientLabel(coefficient: number): string {
   return `× ${coefficient.toLocaleString('fr-FR', { maximumFractionDigits: 4 })}`
+}
+
+/** Ordre des catégories pour le tri d'une section (centrale, organes, câble, accessoires, main-d'œuvre, autre). */
+export const CATEGORY_ORDER: QuoteLineCategory[] = ['central', 'device', 'cable', 'accessory', 'service', 'other']
+
+/**
+ * Nouvel ordre des lignes d'une section, triées par catégorie.
+ * Tri stable : dans une même catégorie, les lignes gardent leur ordre actuel.
+ */
+export function sortedByCategory(lines: Array<Pick<QuoteLine, 'id' | 'category'>>): number[] {
+  return lines
+    .map((line, index) => ({ line, index }))
+    .sort(
+      (a, b) =>
+        CATEGORY_ORDER.indexOf(a.line.category.value) - CATEGORY_ORDER.indexOf(b.line.category.value) ||
+        a.index - b.index,
+    )
+    .map(({ line }) => line.id)
 }

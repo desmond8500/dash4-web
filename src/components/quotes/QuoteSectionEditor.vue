@@ -9,7 +9,7 @@ import Menu from 'primevue/menu'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
 import type { Currency, QuoteLine, QuoteLineCategory, QuoteLinePayload, QuoteSection } from '@dash4/shared'
-import { linePrice } from '@/utils/quotes'
+import { linePrice, sortedByCategory } from '@/utils/quotes'
 
 /**
  * Une section du devis et ses lignes, modifiables sur place.
@@ -134,6 +134,15 @@ function openMenu(event: Event, line: QuoteLine): void {
   menu.value?.toggle(event)
 }
 
+/** Trie les lignes par catégorie ; rien n'est envoyé si l'ordre est déjà le bon. */
+const alreadySorted = computed(() => {
+  const ids = props.section.lines.map((l) => l.id)
+  return sortedByCategory(props.section.lines).every((id, i) => id === ids[i])
+})
+function sortByCategory(): void {
+  if (!alreadySorted.value) emit('orderLines', sortedByCategory(props.section.lines))
+}
+
 const subtotal = computed(() => props.section.lines.reduce((sum, l) => sum + preview(l).total, 0))
 const money = (v: number) => formatMoney(v, props.currency)
 </script>
@@ -157,6 +166,15 @@ const money = (v: number) => formatMoney(v, props.currency)
       </label>
       <span v-if="props.showPrices" class="subtotal">{{ money(subtotal) }}</span>
       <template v-if="props.editable">
+        <Button
+          icon="pi pi-sort-amount-down"
+          label="Trier par catégorie"
+          text
+          size="small"
+          :disabled="props.section.lines.length < 2 || alreadySorted"
+          title="Centrale, organes, câble, accessoires, main-d'œuvre, autre"
+          @click="sortByCategory"
+        />
         <Button icon="pi pi-arrow-up" text rounded size="small" :disabled="props.first" aria-label="Monter la section" @click="emit('moveSection', -1)" />
         <Button icon="pi pi-arrow-down" text rounded size="small" :disabled="props.last" aria-label="Descendre la section" @click="emit('moveSection', 1)" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer la section" @click="emit('removeSection')" />
