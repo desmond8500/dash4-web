@@ -74,6 +74,12 @@ export const router = createRouter({
           meta: { title: 'Utilisateurs', permissions: ['users.view'] },
         },
         {
+          path: 'entreprise',
+          name: 'company',
+          component: () => import('@/views/CompanyView.vue'),
+          meta: { title: 'Entreprise et paramètres', permissions: ['company.view', 'bank.view', 'signature.manage', 'settings.view'] },
+        },
+        {
           path: 'profil',
           name: 'profile',
           component: () => import('@/views/ProfileView.vue'),

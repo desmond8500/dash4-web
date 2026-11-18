@@ -24,6 +24,12 @@ export const MENU: MenuEntry[] = [
   { label: 'Projets', icon: 'pi pi-briefcase', to: '/projets', permissions: ['projects.view', 'projects.view.own'] },
   { label: 'Contacts', icon: 'pi pi-address-book', to: '/contacts', permissions: ['clients.view', 'clients.view.own'] },
   { label: 'Utilisateurs', icon: 'pi pi-users', to: '/utilisateurs', permissions: ['users.view'] },
+  {
+    label: 'Entreprise',
+    icon: 'pi pi-cog',
+    to: '/entreprise',
+    permissions: ['company.view', 'bank.view', 'signature.manage', 'settings.view'],
+  },
 ]
 
 export function visibleMenu(canAny: (permissions: string[]) => boolean): MenuEntry[] {
