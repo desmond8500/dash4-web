@@ -4,7 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "24"
-  # VITE_API_URL est défini dans les variables d'environnement du site Netlify
+  # Adresse de l'API (pas un secret). Lue au moment du build : redéployer après un changement.
+  VITE_API_URL = "https://api.dash4.yonkou.info/api"
 
 # Application monopage : toutes les routes renvoient index.html
 [[redirects]]

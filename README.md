@@ -32,7 +32,7 @@ Le code commun (types, client API, droits) vient de [dash4-shared](https://githu
 
 1. *Add new site > Import an existing project* → GitHub → `dash4-web`.
 2. Les réglages de build sont lus dans `netlify.toml` (`npm run build`, dossier `dist`).
-3. *Site configuration > Environment variables* : `VITE_API_URL = https://api.dash4.yonkou.info/api`.
+3. L'adresse de l'API est déjà dans `netlify.toml` (`VITE_API_URL`) ; une variable du même nom dans Netlify n'est utile que pour la changer.
 4. *Domain management* : ajouter `dash4.yonkou.info` et créer chez le DNS de `yonkou.info` l'enregistrement indiqué par Netlify (CNAME `dash4` → `<site>.netlify.app`).
 5. Côté API, `FRONTEND_URLS` doit contenir `https://dash4.yonkou.info`.
 
