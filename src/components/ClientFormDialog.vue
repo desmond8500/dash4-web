@@ -11,6 +11,8 @@ import { ApiError, CLIENT_STATUS_LABELS, CLIENT_TYPE_LABELS } from '@dash4/share
 import type { Client, ClientPayload, ClientStatus, ClientType } from '@dash4/shared'
 import { api } from '@/services/api'
 import ContactListEditor from './ContactListEditor.vue'
+import ClientLogo from './ClientLogo.vue'
+import { logoError, LOGO_TYPES } from '@/utils/clients'
 import {
   emailsToRows,
   phonesToRows,
@@ -22,7 +24,9 @@ import {
 
 const props = defineProps<{ client: Client | null }>()
 const visible = defineModel<boolean>('visible', { required: true })
-const emit = defineEmits<{ saved: [client: Client] }>()
+const emit = defineEmits<{ saved: [client: Client]; logoFailed: [message: string] }>()
+
+class LogoUploadError extends Error {}
 
 const isEdit = computed(() => props.client !== null)
 
@@ -36,6 +40,9 @@ const form = reactive({
   phones: [] as ListRow[],
   emails: [] as ListRow[],
 })
+const logoFile = ref<File | null>(null)
+const logoPreview = ref<string | null>(null)
+const logoMessage = ref<string | null>(null)
 const errors = ref<Record<string, string[]>>({})
 const generalError = ref<string | null>(null)
 const saving = ref(false)
@@ -43,8 +50,26 @@ const saving = ref(false)
 const typeOptions = Object.entries(CLIENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))
 const statusOptions = Object.entries(CLIENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
 
+function setLogo(file: File | null): void {
+  if (logoPreview.value) URL.revokeObjectURL(logoPreview.value)
+  logoFile.value = file
+  logoPreview.value = file ? URL.createObjectURL(file) : null
+}
+
+function onLogoPicked(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  input.value = ''
+  logoMessage.value = file ? logoError(file) : null
+  setLogo(file && !logoMessage.value ? file : null)
+}
+
 watch(visible, async (open) => {
-  if (!open) return
+  if (!open) {
+    setLogo(null)
+    return
+  }
+  logoMessage.value = null
   errors.value = {}
   generalError.value = null
   let c = props.client
@@ -83,13 +108,26 @@ async function save(): Promise<void> {
   }
 
   try {
-    const saved = props.client
+    let saved = props.client
       ? await api.clients.update(props.client.id, payload)
       : await api.clients.create({ ...payload, client_uuid: crypto.randomUUID() })
+    if (logoFile.value) {
+      try {
+        saved = await api.clients.uploadLogo(saved.id, logoFile.value, logoFile.value.name)
+      } catch (e) {
+        // La fiche est enregistrée ; seul le logo a échoué, on le signale sans bloquer
+        generalError.value = null
+        emit('saved', saved)
+        visible.value = false
+        throw new LogoUploadError(e instanceof ApiError ? (e.fieldError('logo') ?? e.message) : 'Envoi du logo impossible.')
+      }
+    }
     emit('saved', saved)
     visible.value = false
   } catch (e) {
-    if (e instanceof ApiError) {
+    if (e instanceof LogoUploadError) {
+      emit('logoFailed', e.message)
+    } else if (e instanceof ApiError) {
       errors.value = e.errors
       generalError.value = Object.keys(e.errors).length ? null : e.message
     } else {
@@ -113,6 +151,23 @@ async function save(): Promise<void> {
       <Message v-if="generalError" class="form-field--full" severity="error" :closable="false">
         {{ generalError }}
       </Message>
+
+      <div class="form-field form-field--full logo-field">
+        <ClientLogo :name="form.name || '?'" :url="logoPreview ?? props.client?.logo_url" :size="56" />
+        <div>
+          <Button
+            :label="logoPreview || props.client?.logo_url ? 'Changer le logo' : 'Choisir un logo'"
+            icon="pi pi-image"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="($refs.logoInput as HTMLInputElement).click()"
+          />
+          <input ref="logoInput" type="file" :accept="LOGO_TYPES.join(',')" hidden @change="onLogoPicked" />
+          <small class="muted logo-hint">JPEG, PNG ou WebP, 2 Mo au plus</small>
+          <small v-if="logoMessage" class="field-error">{{ logoMessage }}</small>
+        </div>
+      </div>
 
       <div class="form-field form-field--full">
         <label for="client-name">Nom</label>
@@ -175,6 +230,17 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.logo-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-hint {
+  display: block;
+  margin-top: 0.25rem;
+}
+
 .switch {
   flex-direction: row;
   align-items: center;

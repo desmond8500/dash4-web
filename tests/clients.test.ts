@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { visibleMenu } from '../src/menu'
 import { emailsToRows, phonesToRows, rowErrors, rowsToEmails, rowsToPhones, telHref } from '../src/utils/contactLists'
-import { statusSeverity } from '../src/utils/clients'
+import { initials, logoError, statusSeverity } from '../src/utils/clients'
 
 describe('menu des clients', () => {
   const menuFor = (permissions: string[]) =>
@@ -56,5 +56,20 @@ describe('statut des clients', () => {
     expect(statusSeverity('active')).toBe('success')
     expect(statusSeverity('prospect')).toBe('info')
     expect(statusSeverity('inactive')).toBe('secondary')
+  })
+})
+
+describe('logo des clients', () => {
+  it('affiche les initiales quand il n\'y a pas de logo', () => {
+    expect(initials('Société Générale')).toBe('SG')
+    expect(initials('Sonatel')).toBe('SO')
+    expect(initials("L'Étoile d'Or")).toBe('LÉ')
+    expect(initials('  ')).toBe('?')
+  })
+
+  it('refuse avant l\'envoi un fichier qui n\'est pas une image acceptée ou trop lourd', () => {
+    expect(logoError({ type: 'image/png', size: 500_000 })).toBeNull()
+    expect(logoError({ type: 'image/svg+xml', size: 1_000 })).toBe('Le logo doit être une image JPEG, PNG ou WebP.')
+    expect(logoError({ type: 'image/jpeg', size: 3 * 1024 * 1024 })).toBe('Le logo ne peut pas dépasser 2 Mo.')
   })
 })

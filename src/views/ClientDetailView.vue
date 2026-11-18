@@ -15,7 +15,8 @@ import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientFormDialog from '@/components/ClientFormDialog.vue'
 import ContactFormDialog from '@/components/ContactFormDialog.vue'
-import { statusSeverity } from '@/utils/clients'
+import ClientLogo from '@/components/ClientLogo.vue'
+import { logoError, LOGO_TYPES, statusSeverity } from '@/utils/clients'
 import { telHref } from '@/utils/contactLists'
 
 const props = defineProps<{ id: string }>()
@@ -64,6 +65,48 @@ async function toggleFavorite(): Promise<void> {
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Modification impossible', detail: (e as Error).message, life: 5000 })
   }
+}
+
+const logoInput = ref<HTMLInputElement | null>(null)
+const logoBusy = ref(false)
+
+async function onLogoPicked(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || !client.value) return
+  const error = logoError(file)
+  if (error) {
+    toast.add({ severity: 'warn', summary: 'Logo refusé', detail: error, life: 5000 })
+    return
+  }
+  logoBusy.value = true
+  try {
+    const updated = await api.clients.uploadLogo(client.value.id, file, file.name)
+    client.value = { ...client.value, logo_url: updated.logo_url }
+  } catch (e) {
+    const detail = e instanceof ApiError ? (e.fieldError('logo') ?? e.message) : undefined
+    toast.add({ severity: 'error', summary: 'Envoi du logo impossible', detail, life: 5000 })
+  } finally {
+    logoBusy.value = false
+  }
+}
+
+async function removeLogo(): Promise<void> {
+  if (!client.value) return
+  logoBusy.value = true
+  try {
+    const updated = await api.clients.removeLogo(client.value.id)
+    client.value = { ...client.value, logo_url: updated.logo_url }
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Suppression du logo impossible', detail: (e as Error).message, life: 5000 })
+  } finally {
+    logoBusy.value = false
+  }
+}
+
+function onLogoFailed(message: string): void {
+  toast.add({ severity: 'warn', summary: 'Client enregistré, mais pas son logo', detail: message, life: 6000 })
 }
 
 function onClientSaved(): void {
@@ -143,6 +186,29 @@ function contactEmails(contact: Contact): string[] {
 
       <div class="page-header">
         <div class="title">
+          <div class="logo-box">
+            <ClientLogo :name="client.name" :url="client.logo_url" :size="64" />
+            <div v-if="auth.can('clients.update')" class="logo-actions">
+              <Button
+                :label="client.logo_url ? 'Changer' : 'Ajouter un logo'"
+                icon="pi pi-image"
+                size="small"
+                text
+                :loading="logoBusy"
+                @click="logoInput?.click()"
+              />
+              <Button
+                v-if="client.logo_url"
+                label="Retirer"
+                size="small"
+                severity="secondary"
+                text
+                :disabled="logoBusy"
+                @click="removeLogo"
+              />
+              <input ref="logoInput" type="file" :accept="LOGO_TYPES.join(',')" hidden @change="onLogoPicked" />
+            </div>
+          </div>
           <h1>{{ client.name }}</h1>
           <Tag :value="client.status.label" :severity="statusSeverity(client.status.value)" />
           <Tag :value="client.type.label" severity="secondary" />
@@ -272,7 +338,7 @@ function contactEmails(contact: Contact): string[] {
         </Column>
       </DataTable>
 
-      <ClientFormDialog v-model:visible="clientDialog" :client="client" @saved="onClientSaved" />
+      <ClientFormDialog v-model:visible="clientDialog" :client="client" @saved="onClientSaved" @logo-failed="onLogoFailed" />
       <ContactFormDialog
         v-model:visible="contactDialog"
         :contact="editedContact"
@@ -303,6 +369,18 @@ function contactEmails(contact: Contact): string[] {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.logo-box {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.logo-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .actions {

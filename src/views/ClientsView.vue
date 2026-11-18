@@ -16,6 +16,7 @@ import type { Client, ClientStatus, ClientType } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientFormDialog from '@/components/ClientFormDialog.vue'
+import ClientLogo from '@/components/ClientLogo.vue'
 import { statusSeverity } from '@/utils/clients'
 
 const auth = useAuthStore()
@@ -103,6 +104,10 @@ function onSaved(client: Client): void {
   void router.push({ name: 'client', params: { id: client.id } })
 }
 
+function onLogoFailed(message: string): void {
+  toast.add({ severity: 'warn', summary: 'Client enregistré, mais pas son logo', detail: message, life: 6000 })
+}
+
 onMounted(load)
 </script>
 
@@ -142,12 +147,15 @@ onMounted(load)
 
       <Column header="Nom">
         <template #body="{ data }">
-          <div class="name">
-            <strong>
-              <i v-if="data.is_favorite" class="pi pi-star-fill favorite" aria-label="Favori" />
-              {{ data.name }}
-            </strong>
-            <span class="muted">{{ data.address }}</span>
+          <div class="identity">
+            <ClientLogo :name="data.name" :url="data.logo_url" :size="36" />
+            <div class="name">
+              <strong>
+                <i v-if="data.is_favorite" class="pi pi-star-fill favorite" aria-label="Favori" />
+                {{ data.name }}
+              </strong>
+              <span class="muted">{{ data.address }}</span>
+            </div>
           </div>
         </template>
       </Column>
@@ -170,7 +178,7 @@ onMounted(load)
       </Column>
     </DataTable>
 
-    <ClientFormDialog v-model:visible="dialogOpen" :client="null" @saved="onSaved" />
+    <ClientFormDialog v-model:visible="dialogOpen" :client="null" @saved="onSaved" @logo-failed="onLogoFailed" />
   </div>
 </template>
 
@@ -179,6 +187,12 @@ onMounted(load)
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .name {
