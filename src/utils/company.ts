@@ -12,3 +12,10 @@ export function signatureImageError(file: { type: string; size: number }): strin
   if (file.size > 2 * 1024 * 1024) return "L'image ne peut pas dépasser 2 Mo."
   return null
 }
+
+/** Image d'une signature d'e-mail : JPEG ou PNG (le WebP est mal lu par les messageries), 1 Mo au plus. */
+export function signatureEmailImageError(file: { type: string; size: number }): string | null {
+  if (!['image/jpeg', 'image/png'].includes(file.type)) return "L'image doit être au format JPEG ou PNG."
+  if (file.size > 1024 * 1024) return "L'image ne peut pas dépasser 1 Mo."
+  return null
+}

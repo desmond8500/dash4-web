@@ -6,11 +6,13 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
 import Tag from 'primevue/tag'
+import Slider from 'primevue/slider'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
 import type { EmailSignature, EmailSignatureList } from '@dash4/shared'
 import { api } from '@/services/api'
+import { signatureEmailImageError as signatureImageError } from '@/utils/company'
 
 /** Signatures d'e-mail : les siennes, et celles communes à l'entreprise (administrateur, comptable). */
 const toast = useToast()
@@ -19,7 +21,37 @@ const confirm = useConfirm()
 const list = ref<EmailSignatureList | null>(null)
 const open = ref(false)
 const edited = ref<EmailSignature | null>(null)
-const form = ref({ name: '', body: '', is_default: false, shared: false })
+const form = ref({ name: '', body: '', is_default: false, shared: false, image_width: 160 })
+// Image : choisie dans l'éditeur, envoyée après l'enregistrement de la signature
+const imageFile = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
+const removeCurrentImage = ref(false)
+const imageInput = ref<HTMLInputElement | null>(null)
+
+function pickImage(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  const error = signatureImageError(file)
+  if (error) {
+    toast.add({ severity: 'warn', summary: 'Image refusée', detail: error, life: 5000 })
+    return
+  }
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
+  imageFile.value = file
+  imagePreview.value = URL.createObjectURL(file)
+  removeCurrentImage.value = false
+}
+
+function clearImage(): void {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
+  imageFile.value = null
+  imagePreview.value = null
+  removeCurrentImage.value = true
+}
+
+const shownImage = computed(() => imagePreview.value ?? (removeCurrentImage.value ? null : edited.value?.image_url ?? null))
 const textarea = ref<{ $el: HTMLTextAreaElement } | null>(null)
 const errors = ref<Record<string, string[]>>({})
 const saving = ref(false)
@@ -42,9 +74,12 @@ const EXAMPLE = 'Cordialement,\n{nom}\n{fonction} — {entreprise}\n{telephone} 
 function openEditor(signature: EmailSignature | null, isShared = false): void {
   edited.value = signature
   errors.value = {}
+  imageFile.value = null
+  imagePreview.value = null
+  removeCurrentImage.value = false
   form.value = signature
-    ? { name: signature.name, body: signature.body, is_default: signature.is_default, shared: signature.shared }
-    : { name: isShared ? 'Signature de l\'entreprise' : 'Ma signature', body: EXAMPLE, is_default: !(isShared ? shared.value : mine.value).length, shared: isShared }
+    ? { name: signature.name, body: signature.body, is_default: signature.is_default, shared: signature.shared, image_width: signature.image_width }
+    : { name: isShared ? 'Signature de l\'entreprise' : 'Ma signature', body: EXAMPLE, is_default: !(isShared ? shared.value : mine.value).length, shared: isShared, image_width: 160 }
   open.value = true
 }
 
@@ -68,10 +103,13 @@ function insertVariable(key: string): void {
 async function save(): Promise<void> {
   saving.value = true
   errors.value = {}
-  const { name, body, is_default, shared: isShared } = form.value
+  const { name, body, is_default, shared: isShared, image_width } = form.value
   try {
-    if (edited.value) await api.emailSignatures.update(edited.value.id, { name: name.trim(), body, is_default })
-    else await api.emailSignatures.create({ name: name.trim(), body, is_default, shared: isShared })
+    const saved = edited.value
+      ? await api.emailSignatures.update(edited.value.id, { name: name.trim(), body, is_default, image_width })
+      : await api.emailSignatures.create({ name: name.trim(), body, is_default, image_width, shared: isShared })
+    if (imageFile.value) await api.emailSignatures.uploadImage(saved.id, imageFile.value, imageFile.value.name)
+    else if (removeCurrentImage.value && edited.value?.image_url) await api.emailSignatures.removeImage(saved.id)
     open.value = false
     toast.add({ severity: 'success', summary: 'Signature enregistrée', life: 2500 })
     await load()
@@ -124,6 +162,7 @@ function remove(signature: EmailSignature): void {
             <Tag v-if="s.is_default" value="Par défaut" severity="success" />
           </header>
           <pre class="preview">{{ s.preview }}</pre>
+          <img v-if="s.image_url" :src="s.image_url" :style="{ width: `${Math.min(s.image_width, 240)}px` }" class="sig-image" alt="" />
           <footer v-if="s.can_edit">
             <Button v-if="!s.is_default" label="Par défaut" size="small" text @click="makeDefault(s)" />
             <Button icon="pi pi-pencil" size="small" text rounded aria-label="Modifier" @click="openEditor(s)" />
@@ -157,6 +196,22 @@ function remove(signature: EmailSignature): void {
             />
           </div>
           <small class="muted">Une ligne dont la variable est vide (pas de fonction, pas de téléphone…) est retirée à l'envoi.</small>
+        </div>
+        <div class="form-field form-field--full">
+          <label>Photo ou logo (facultatif)</label>
+          <div class="image-row">
+            <img v-if="shownImage" :src="shownImage" :style="{ width: `${form.image_width}px` }" class="sig-image" alt="" />
+            <div class="image-actions">
+              <Button :label="shownImage ? 'Changer l\'image' : 'Ajouter une image'" icon="pi pi-image" size="small" severity="secondary" outlined @click="imageInput?.click()" />
+              <Button v-if="shownImage" label="Retirer" size="small" text severity="danger" @click="clearImage" />
+              <input ref="imageInput" type="file" accept="image/jpeg,image/png" hidden @change="pickImage" />
+              <small class="muted">JPEG ou PNG, 1 Mo au plus. Intégrée au message : visible même si les images externes sont bloquées.</small>
+            </div>
+          </div>
+          <template v-if="shownImage">
+            <label class="muted small">Largeur dans l'e-mail : {{ form.image_width }} px</label>
+            <Slider v-model="form.image_width" :min="40" :max="600" :step="10" class="slider" />
+          </template>
         </div>
         <label class="form-field--full check">
           <Checkbox v-model="form.is_default" binary />
@@ -227,6 +282,35 @@ h3 {
   font-size: 0.875rem;
   white-space: pre-wrap;
   color: var(--p-text-muted-color);
+}
+
+.sig-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.image-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.image-actions small {
+  flex-basis: 100%;
+}
+
+.slider {
+  margin: 0.5rem 0.5rem 0;
 }
 
 .variables {

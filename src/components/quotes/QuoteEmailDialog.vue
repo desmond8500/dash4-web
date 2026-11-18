@@ -31,7 +31,8 @@ const signatureOptions = computed(() => [
   { id: null, name: 'Sans signature' },
   ...(draft.value?.signatures ?? []).map((s) => ({ id: s.id, name: s.shared ? `${s.name} (entreprise)` : s.name })),
 ])
-const signaturePreview = computed(() => draft.value?.signatures.find((s) => s.id === signatureId.value)?.preview ?? null)
+const selectedSignature = computed(() => draft.value?.signatures.find((s) => s.id === signatureId.value) ?? null)
+const signaturePreview = computed(() => selectedSignature.value?.preview ?? null)
 const error = ref<string | null>(null)
 const sending = ref(false)
 
@@ -136,7 +137,10 @@ async function send(): Promise<void> {
       <div class="form-field form-field--full">
         <label for="e-signature">Signature</label>
         <Select id="e-signature" v-model="signatureId" :options="signatureOptions" option-label="name" option-value="id" />
-        <pre v-if="signaturePreview" class="signature">{{ signaturePreview }}</pre>
+        <div v-if="selectedSignature" class="signature">
+          <pre>{{ signaturePreview }}</pre>
+          <img v-if="selectedSignature.image_url" :src="selectedSignature.image_url" :style="{ width: `${Math.min(selectedSignature.image_width, 300)}px` }" alt="" />
+        </div>
         <small class="muted">
           Vos signatures se gèrent dans <RouterLink :to="{ name: 'profile' }" @click="visible = false">Mon profil</RouterLink>.
         </small>
@@ -162,10 +166,21 @@ async function send(): Promise<void> {
   margin: 0.25rem 0 0;
   padding: 0.5rem 0.75rem;
   border-left: 3px solid var(--p-content-border-color);
+}
+
+.signature pre {
+  margin: 0;
   font-family: inherit;
   font-size: 0.85rem;
   white-space: pre-wrap;
   color: var(--p-text-muted-color);
+}
+
+.signature img {
+  display: block;
+  margin-top: 0.5rem;
+  max-width: 100%;
+  height: auto;
 }
 
 .suggestions {

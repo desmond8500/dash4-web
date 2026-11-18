@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { visibleMenu } from '../src/menu'
-import { maskAccount, signatureImageError } from '../src/utils/company'
+import { maskAccount, signatureEmailImageError, signatureImageError } from '../src/utils/company'
 import { companyTabs } from '../src/utils/companyTabs'
 
 describe('page Entreprise', () => {
@@ -40,5 +40,14 @@ describe('banque et signature', () => {
       "L'image doit être au format PNG (fond transparent conseillé).",
     )
     expect(signatureImageError({ type: 'image/png', size: 3 * 1024 * 1024 })).toBe("L'image ne peut pas dépasser 2 Mo.")
+  })
+})
+
+describe('image des signatures d\'e-mail', () => {
+  it('accepte JPEG et PNG de 1 Mo au plus, pas le WebP', () => {
+    expect(signatureEmailImageError({ type: 'image/jpeg', size: 200_000 })).toBeNull()
+    expect(signatureEmailImageError({ type: 'image/png', size: 200_000 })).toBeNull()
+    expect(signatureEmailImageError({ type: 'image/webp', size: 200_000 })).toBe("L'image doit être au format JPEG ou PNG.")
+    expect(signatureEmailImageError({ type: 'image/png', size: 2_000_000 })).toBe("L'image ne peut pas dépasser 1 Mo.")
   })
 })
