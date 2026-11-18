@@ -200,7 +200,7 @@ async function receive(): Promise<void> {
           <Tag :value="purchase.status.label" :severity="purchaseStatusSeverity(purchase.status.value)" />
           <Tag v-if="purchase.is_late" value="En retard" severity="danger" icon="pi pi-clock" />
           <span class="muted">
-            {{ purchase.provider?.name }}
+            <RouterLink v-if="purchase.provider" :to="{ name: 'provider', params: { id: purchase.provider.id } }">{{ purchase.provider.name }}</RouterLink>
             <template v-if="purchase.project"> · <RouterLink :to="{ name: 'project', params: { id: purchase.project.id } }">{{ purchase.project.name }}</RouterLink></template>
           </span>
         </div>

@@ -119,6 +119,20 @@ export const router = createRouter({
           meta: { title: 'Fournisseurs et marques', permissions: ['stock.view', 'purchases.view', 'purchases.view.own'] },
         },
         {
+          path: 'stock/fournisseurs/:id(\\d+)',
+          name: 'provider',
+          component: () => import('@/views/ProviderDetailView.vue'),
+          props: true,
+          meta: { title: 'Fournisseur', permissions: ['stock.view', 'purchases.view', 'purchases.view.own'] },
+        },
+        {
+          path: 'stock/marques/:id(\\d+)',
+          name: 'brand',
+          component: () => import('@/views/BrandDetailView.vue'),
+          props: true,
+          meta: { title: 'Marque', permissions: ['stock.view', 'purchases.view', 'purchases.view.own'] },
+        },
+        {
           path: 'achats',
           name: 'purchases',
           component: () => import('@/views/PurchasesView.vue'),

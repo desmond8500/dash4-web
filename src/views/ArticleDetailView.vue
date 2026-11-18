@@ -184,8 +184,8 @@ function remove(): void {
                   <dt>Référence</dt><dd>{{ article.reference ?? '—' }}</dd>
                   <dt>Code-barres</dt><dd>{{ article.barcode ?? '—' }}</dd>
                   <dt>Catégorie</dt><dd>{{ article.category.label }}</dd>
-                  <dt>Marque</dt><dd>{{ article.brand?.name ?? '—' }}</dd>
-                  <dt>Fournisseur</dt><dd>{{ article.provider?.name ?? '—' }}</dd>
+                  <dt>Marque</dt><dd><RouterLink v-if="article.brand" :to="{ name: 'brand', params: { id: article.brand.id } }">{{ article.brand.name }}</RouterLink><template v-else>—</template></dd>
+                  <dt>Fournisseur</dt><dd><RouterLink v-if="article.provider" :to="{ name: 'provider', params: { id: article.provider.id } }">{{ article.provider.name }}</RouterLink><template v-else>—</template></dd>
                   <dt>Emplacement</dt><dd>{{ article.location ?? '—' }}</dd>
                   <template v-if="article.unit_cost !== undefined">
                     <dt>Coût d'achat</dt><dd>{{ formatMoney(article.unit_cost) }} × {{ article.coefficient?.toLocaleString('fr-FR') }}</dd>
