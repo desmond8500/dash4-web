@@ -1,5 +1,6 @@
 /**
- * Menu principal. Un élément n'apparaît que si l'utilisateur a au moins une des permissions listées.
+ * Menu principal. Un élément n'apparaît que si l'utilisateur a au moins une des permissions listées
+ * (aucune permission listée : visible de tous).
  * Les modules suivants (projets, devis…) seront ajoutés ici au fil des livraisons.
  */
 export interface MenuEntry {
@@ -8,7 +9,7 @@ export interface MenuEntry {
   to: string
   permissions: string[]
   /** Compteur affiché à côté du libellé. */
-  badge?: 'client_requests'
+  badge?: 'client_requests' | 'messages'
 }
 
 export const MENU: MenuEntry[] = [
@@ -22,6 +23,7 @@ export const MENU: MenuEntry[] = [
     badge: 'client_requests',
   },
   { label: 'Projets', icon: 'pi pi-briefcase', to: '/projets', permissions: ['projects.view', 'projects.view.own'] },
+  { label: 'Messages', icon: 'pi pi-comments', to: '/messages', permissions: [], badge: 'messages' },
   { label: 'Tâches', icon: 'pi pi-check-square', to: '/taches', permissions: ['tasks.view', 'tasks.view.own'] },
   { label: 'Planning', icon: 'pi pi-calendar', to: '/planning', permissions: ['tasks.view', 'tasks.view.own'] },
   { label: 'Journaux', icon: 'pi pi-book', to: '/journaux', permissions: ['journals.view', 'journals.view.own'] },
@@ -49,5 +51,6 @@ export const MENU: MenuEntry[] = [
 ]
 
 export function visibleMenu(canAny: (permissions: string[]) => boolean): MenuEntry[] {
-  return MENU.filter((entry) => canAny(entry.permissions))
+  // Sans permission listée : visible de tous (messagerie)
+  return MENU.filter((entry) => entry.permissions.length === 0 || canAny(entry.permissions))
 }

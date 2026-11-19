@@ -8,6 +8,7 @@ import Drawer from 'primevue/drawer'
 import { useAuthStore } from '@/stores/auth'
 import { visibleMenu, type MenuEntry } from '@/menu'
 import { useClientRequestsStore } from '@/stores/clientRequests'
+import { useMessagingStore } from '@/stores/messaging'
 import { useToast } from 'primevue/usetoast'
 import NotificationBell from '@/components/NotificationBell.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
@@ -15,9 +16,11 @@ import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
 const auth = useAuthStore()
 const router = useRouter()
 const requests = useClientRequestsStore()
+const messaging = useMessagingStore()
 const toast = useToast()
 
 function badgeFor(entry: MenuEntry): number {
+  if (entry.badge === 'messages') return messaging.unread
   return entry.badge === 'client_requests' ? (requests.summary?.open ?? 0) : 0
 }
 
@@ -26,8 +29,14 @@ function onRequestSaved(): void {
   requests.changed()
 }
 
-onMounted(() => requests.start())
-onUnmounted(() => requests.stop())
+onMounted(() => {
+  requests.start()
+  messaging.start()
+})
+onUnmounted(() => {
+  requests.stop()
+  messaging.stop()
+})
 
 const mobileMenuOpen = ref(false)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)

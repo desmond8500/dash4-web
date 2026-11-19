@@ -208,6 +208,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
             rounded
             @click="toggleFavorite"
           />
+          <Button label="Discussion" icon="pi pi-comments" severity="secondary" text @click="router.push({ name: 'messages', query: { project: project.id } })" />
           <Button v-if="canUpdate" label="Modifier" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
           <Button v-if="canDelete" label="Supprimer" icon="pi pi-trash" severity="danger" outlined @click="remove" />
         </div>

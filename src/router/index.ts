@@ -259,6 +259,12 @@ export const router = createRouter({
           meta: { title: 'Mon profil' },
         },
         {
+          path: 'messages/:id?',
+          name: 'messages',
+          component: () => import('@/views/MessagesView.vue'),
+          meta: { title: 'Messages' },
+        },
+        {
           path: 'profil/cv/:id',
           name: 'cv',
           component: () => import('@/views/CvEditorView.vue'),
