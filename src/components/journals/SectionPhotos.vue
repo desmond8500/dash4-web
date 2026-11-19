@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { ApiError } from '@dash4/shared'
 import type { Document } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { documentUrl, openDocuments } from '@/utils/lightbox'
 
 /** Photos d'une section de journal : vignettes, ajout (plusieurs à la fois), suppression. */
 const props = defineProps<{ sectionId: number; photos: Document[]; canAdd: boolean; canManage: boolean }>()
@@ -22,7 +23,7 @@ const canRemove = (d: Document) => props.canManage || (props.canAdd && d.creator
 async function thumbnail(d: Document): Promise<void> {
   if (!isImage(d) || urls.value[d.id]) return
   try {
-    urls.value = { ...urls.value, [d.id]: URL.createObjectURL(await api.documents.download(d)) }
+    urls.value = { ...urls.value, [d.id]: await documentUrl(d) }
   } catch {
     // vignette indisponible : le nom reste affiché
   }
@@ -33,7 +34,6 @@ watch(() => props.photos, (photos) => {
   photos.forEach((d) => void thumbnail(d))
 }, { immediate: true })
 
-onBeforeUnmount(() => Object.values(urls.value).forEach((u) => URL.revokeObjectURL(u)))
 
 async function onFiles(event: Event): Promise<void> {
   const files = Array.from((event.target as HTMLInputElement).files ?? [])
@@ -54,8 +54,7 @@ async function onFiles(event: Event): Promise<void> {
 }
 
 async function open(d: Document): Promise<void> {
-  const url = urls.value[d.id] ?? URL.createObjectURL(await api.documents.download(d))
-  window.open(url, '_blank')
+  await openDocuments(list.value, d)
 }
 
 async function remove(d: Document): Promise<void> {

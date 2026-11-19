@@ -10,6 +10,7 @@ import { ApiError } from '@dash4/shared'
 import type { AttachableType, Document, Link, Note } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { documentUrl, isImageDocument, openDocuments } from '@/utils/lightbox'
 import { ageLabel, formatDateTime } from '@/utils/clientRequests'
 import { documentError, DOCUMENT_EXTENSIONS, fileIcon, fileSize, normalizeUrl } from '@/utils/projects'
 
@@ -148,6 +149,16 @@ function onFiles(event: Event): Promise<void> {
   }, 'Envoi impossible')
 }
 
+// Images : vignettes, et visionneuse plein écran au clic
+const images = computed(() => documents.value.filter(isImageDocument))
+const thumbs = ref<Record<number, string>>({})
+watch(images, (list) => {
+  for (const d of list.slice(0, 24)) {
+    if (!thumbs.value[d.id]) void documentUrl(d).then((u) => (thumbs.value = { ...thumbs.value, [d.id]: u })).catch(() => undefined)
+  }
+}, { immediate: true })
+const view = (doc: Document) => openDocuments(images.value, doc)
+
 async function download(doc: Document): Promise<void> {
   try {
     const blob = await api.documents.download(doc)
@@ -256,9 +267,16 @@ const removeDocument = (doc: Document) =>
         <input ref="fileInput" type="file" multiple hidden :accept="acceptedFiles" @change="onFiles" />
       </div>
       <p v-if="!loading && !documents.length" class="muted">Aucun document.</p>
+      <div v-if="images.length" class="thumbs">
+        <button v-for="doc in images" :key="doc.id" type="button" class="thumb" :title="doc.name" @click="view(doc)">
+          <img v-if="thumbs[doc.id]" :src="thumbs[doc.id]" :alt="doc.name" />
+          <i v-else class="pi pi-image" />
+        </button>
+      </div>
       <div v-for="doc in documents" :key="doc.id" class="line">
         <i :class="fileIcon(doc.name)" class="muted" />
-        <button type="button" class="link grow" @click="download(doc)">{{ doc.name }}</button>
+        <button type="button" class="link grow" @click="isImageDocument(doc) ? view(doc) : download(doc)">{{ doc.name }}</button>
+        <Button v-if="isImageDocument(doc)" icon="pi pi-download" text rounded size="small" severity="secondary" aria-label="Télécharger" @click="download(doc)" />
         <span class="muted">{{ fileSize(doc.size) }} · {{ doc.creator?.full_name ?? '—' }} · {{ ageLabel(doc.created_at) }}</span>
         <Button v-if="canChange(doc)" icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer" @click="removeDocument(doc)" />
       </div>
@@ -267,6 +285,30 @@ const removeDocument = (doc: Document) =>
 </template>
 
 <style scoped>
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.thumb {
+  width: 96px;
+  height: 72px;
+  padding: 0;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 6px;
+  background: var(--p-content-hover-background);
+  overflow: hidden;
+  cursor: zoom-in;
+  color: var(--p-text-muted-color);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .panel {
   display: flex;
   flex-direction: column;

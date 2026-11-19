@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
@@ -8,6 +8,7 @@ import { ApiError, filterMentionable, insertMention, mentionedIds, mentionQuery,
 import type { Comment, CommentableType, Document, Mentionable } from '@dash4/shared'
 import { api } from '@/services/api'
 import { formatDateTime } from '@/utils/clientRequests'
+import { documentUrl, openDocuments } from '@/utils/lightbox'
 
 /**
  * Fil de commentaires d'une fiche : écrire, mentionner avec @ (la personne est prévenue),
@@ -57,16 +58,15 @@ async function load(): Promise<void> {
   }
 }
 watch(() => [props.type, props.id], load, { immediate: true })
-onBeforeUnmount(() => Object.values(urls.value).forEach((u) => URL.revokeObjectURL(u)))
 
 async function thumbnail(d: Document): Promise<void> {
   if (!isImage(d) || urls.value[d.id]) return
-  const blob = await api.documents.download(d).catch(() => null)
-  if (blob) urls.value = { ...urls.value, [d.id]: URL.createObjectURL(blob) }
+  const url = await documentUrl(d).catch(() => null)
+  if (url) urls.value = { ...urls.value, [d.id]: url }
 }
-async function openFile(d: Document): Promise<void> {
-  const url = urls.value[d.id] ?? URL.createObjectURL(await api.documents.download(d))
-  if (isImage(d)) return void window.open(url, '_blank')
+async function openFile(d: Document, all: Document[]): Promise<void> {
+  if (isImage(d)) return openDocuments(all, d)
+  const url = URL.createObjectURL(await api.documents.download(d))
   const a = document.createElement('a')
   a.href = url
   a.download = d.name
@@ -202,7 +202,7 @@ function remove(c: Comment): void {
       </div>
       <p v-else class="body"><template v-for="(p, i) in parts(c)" :key="i"><span v-if="p.mention" class="mention">{{ p.text }}</span><template v-else>{{ p.text }}</template></template></p>
       <div v-if="c.files?.length" class="files">
-        <button v-for="d in c.files" :key="d.id" type="button" class="file" :title="d.name" @click="openFile(d)">
+        <button v-for="d in c.files" :key="d.id" type="button" class="file" :title="d.name" @click="openFile(d, c.files ?? [])">
           <img v-if="urls[d.id]" :src="urls[d.id]" :alt="d.name" />
           <template v-else><i class="pi pi-paperclip" /> {{ d.name }}</template>
         </button>

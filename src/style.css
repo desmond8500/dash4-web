@@ -160,3 +160,23 @@ button.link {
 button.link:hover {
   text-decoration: underline;
 }
+
+/* Visionneuse d'images (PhotoSwipe) : légende sous la photo */
+.pswp__dash4-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 0.875rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pswp__dash4-caption:empty {
+  display: none;
+}
