@@ -9,7 +9,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
-import type { Article, ArticlePayload, Brand, Provider, QuoteLineCategory } from '@dash4/shared'
+import type { Article, ArticlePayload, Brand, Provider, QuoteLineCategory, StorageLocation } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
@@ -22,6 +22,7 @@ const auth = useAuthStore()
 const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLineCategory, string]>).map(([value, label]) => ({ value, label }))
 const brands = ref<Brand[]>([])
 const providers = ref<Provider[]>([])
+const locations = ref<StorageLocation[]>([])
 const errors = ref<Record<string, string[]>>({})
 const generalError = ref<string | null>(null)
 const saving = ref(false)
@@ -39,7 +40,7 @@ const form = reactive({
   unit_cost: 0,
   coefficient: 1,
   min_quantity: null as number | null,
-  location: '',
+  storage_location_id: null as number | null,
   description: '',
   is_active: true,
   initial_quantity: null as number | null,
@@ -61,14 +62,15 @@ watch(visible, async (open) => {
     unit_cost: a?.unit_cost ?? 0,
     coefficient: a?.coefficient ?? 1,
     min_quantity: a?.min_quantity ?? null,
-    location: a?.location ?? '',
+    storage_location_id: a?.storage_location_id ?? null,
     description: a?.description ?? '',
     is_active: a?.is_active ?? true,
     initial_quantity: null,
   })
-  const [b, p] = await Promise.allSettled([api.brands.list(), api.providers.list({ per_page: 100 })])
+  const [b, p, l] = await Promise.allSettled([api.brands.list(), api.providers.list({ per_page: 100 }), api.storageLocations.list()])
   brands.value = b.status === 'fulfilled' ? b.value : []
   providers.value = p.status === 'fulfilled' ? p.value.data : []
+  locations.value = l.status === 'fulfilled' ? l.value : []
 })
 
 async function save(): Promise<void> {
@@ -82,7 +84,7 @@ async function save(): Promise<void> {
     brand_id: form.brand_id,
     provider_id: form.provider_id,
     min_quantity: form.min_quantity,
-    location: text(form.location),
+    storage_location_id: form.storage_location_id,
     description: text(form.description),
     is_active: form.is_active,
     ...(canCosts.value ? { unit_cost: form.unit_cost, coefficient: form.coefficient } : {}),
@@ -163,7 +165,8 @@ const fieldError = (f: string) => errors.value[f]?.[0]
       </div>
       <div class="form-field">
         <label for="a-location">Emplacement</label>
-        <InputText id="a-location" v-model="form.location" placeholder="Étagère, rayon…" />
+        <Select id="a-location" v-model="form.storage_location_id" :options="[{ id: null, name: 'Non rangé' }, ...locations]" option-label="name" option-value="id" filter />
+        <small class="muted">Nouvel emplacement : Stock → Emplacements.</small>
       </div>
       <div v-if="creating" class="form-field">
         <label for="a-initial">Quantité en stock aujourd'hui</label>

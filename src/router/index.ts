@@ -107,6 +107,25 @@ export const router = createRouter({
           meta: { title: 'Article', permissions: ['stock.view'] },
         },
         {
+          path: 'stock/emplacements',
+          name: 'storage-locations',
+          component: () => import('@/views/StorageLocationsView.vue'),
+          meta: { title: 'Emplacements', permissions: ['stock.view'] },
+        },
+        {
+          path: 'stock/emplacements/:id(\\d+)',
+          name: 'storage-location',
+          component: () => import('@/views/StorageLocationView.vue'),
+          props: true,
+          meta: { title: 'Emplacement', permissions: ['stock.view'] },
+        },
+        {
+          path: 'demandes/boite-mail',
+          name: 'inbox',
+          component: () => import('@/views/InboxView.vue'),
+          meta: { title: 'Boîte mail des demandes', permissions: ['client_requests.update'] },
+        },
+        {
           path: 'stock/mouvements',
           name: 'stock-movements',
           component: () => import('@/views/StockMovementsView.vue'),

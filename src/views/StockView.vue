@@ -102,6 +102,7 @@ onMounted(() => {
     <div class="page-header">
       <h1>Stock</h1>
       <div class="header-actions">
+        <Button label="Emplacements" icon="pi pi-map-marker" severity="secondary" @click="router.push({ name: 'storage-locations' })" />
         <Button label="Mouvements" icon="pi pi-history" severity="secondary" @click="router.push({ name: 'stock-movements' })" />
         <Button label="Fournisseurs et marques" icon="pi pi-truck" severity="secondary" @click="router.push({ name: 'providers' })" />
         <Button v-if="auth.can('stock.create')" label="Nouvel article" icon="pi pi-plus" @click="createOpen = true" />

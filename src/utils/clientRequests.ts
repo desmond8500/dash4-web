@@ -1,4 +1,4 @@
-import type { ClientRequest, ClientRequestFilters, ClientRequestStatus, Priority } from '@dash4/shared'
+import type { ClientRequest, ClientRequestFilters, ClientRequestStatus, Priority, ClientRequestLink } from '@dash4/shared'
 
 export type Severity = 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'
 
@@ -94,5 +94,21 @@ export function quickActions(status: ClientRequestStatus): QuickAction[] {
       return [done, dismiss]
     default:
       return [reopen]
+  }
+}
+
+/** Page d'une fiche liée à une demande (un bordereau s'ouvre sur son devis). */
+export function linkRoute(link: Pick<ClientRequestLink, 'type' | 'target_id' | 'quote_id'>): { name: string; params: { id: number } } {
+  switch (link.type) {
+    case 'delivery_note':
+      return { name: 'quote', params: { id: link.quote_id ?? 0 } }
+    case 'invoice':
+      return { name: 'invoice', params: { id: link.target_id } }
+    case 'quote':
+      return { name: 'quote', params: { id: link.target_id } }
+    case 'project':
+      return { name: 'project', params: { id: link.target_id } }
+    default:
+      return { name: 'task', params: { id: link.target_id } }
   }
 }

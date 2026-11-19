@@ -147,6 +147,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Demandes clients</h1>
+      <Button v-if="auth.can('client_requests.update')" label="Boîte mail" icon="pi pi-envelope" severity="secondary" @click="router.push({ name: 'inbox' })" />
       <Button
         v-if="auth.can('client_requests.create')"
         label="Nouvelle demande"

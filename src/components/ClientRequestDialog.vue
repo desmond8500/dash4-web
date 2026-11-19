@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RequestLinks from '@/components/requests/RequestLinks.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
@@ -256,6 +257,10 @@ async function save(): Promise<void> {
           l'ouvrir
         </RouterLink>
       </Message>
+
+      <div v-if="props.request" class="form-field form-field--full">
+        <RequestLinks :request="props.request" :can-edit="auth.can('client_requests.update')" @navigate="visible = false" />
+      </div>
 
       <div class="form-field form-field--full">
         <label for="request-client">Client</label>

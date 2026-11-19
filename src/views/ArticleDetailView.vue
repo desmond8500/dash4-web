@@ -186,7 +186,7 @@ function remove(): void {
                   <dt>Catégorie</dt><dd>{{ article.category.label }}</dd>
                   <dt>Marque</dt><dd><RouterLink v-if="article.brand" :to="{ name: 'brand', params: { id: article.brand.id } }">{{ article.brand.name }}</RouterLink><template v-else>—</template></dd>
                   <dt>Fournisseur</dt><dd><RouterLink v-if="article.provider" :to="{ name: 'provider', params: { id: article.provider.id } }">{{ article.provider.name }}</RouterLink><template v-else>—</template></dd>
-                  <dt>Emplacement</dt><dd>{{ article.location ?? '—' }}</dd>
+                  <dt>Emplacement</dt><dd><RouterLink v-if="article.storage_location" :to="{ name: 'storage-location', params: { id: article.storage_location.id } }">{{ article.storage_location.name }}</RouterLink><template v-else>—</template></dd>
                   <template v-if="article.unit_cost !== undefined">
                     <dt>Coût d'achat</dt><dd>{{ formatMoney(article.unit_cost) }} × {{ article.coefficient?.toLocaleString('fr-FR') }}</dd>
                   </template>

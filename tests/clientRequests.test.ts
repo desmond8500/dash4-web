@@ -57,3 +57,12 @@ describe('boîte des demandes clients', () => {
     expect(menuFor(['stock.view'])).not.toContain('/demandes')
   })
 })
+
+describe('liens d\'une demande', () => {
+  it('ouvre la bonne page selon le type de fiche liée', async () => {
+    const { linkRoute } = await import('../src/utils/clientRequests')
+    expect(linkRoute({ type: 'delivery_note', target_id: 7, quote_id: 3 })).toEqual({ name: 'quote', params: { id: 3 } })
+    expect(linkRoute({ type: 'invoice', target_id: 9, quote_id: null })).toEqual({ name: 'invoice', params: { id: 9 } })
+    expect(linkRoute({ type: 'task', target_id: 2, quote_id: null })).toEqual({ name: 'task', params: { id: 2 } })
+  })
+})
