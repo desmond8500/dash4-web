@@ -210,6 +210,12 @@ export const router = createRouter({
           meta: { title: 'Journal', permissions: ['journals.view', 'journals.view.own'] },
         },
         {
+          path: 'espace-technicien',
+          name: 'tech-space',
+          component: () => import('@/views/TechSpaceView.vue'),
+          meta: { title: 'Espace technicien', permissions: ['tech_shares.view', 'tech_shares.view.own', 'tech_access_requests.view', 'tech_access_requests.view.own'] },
+        },
+        {
           path: 'planning',
           name: 'planning',
           component: () => import('@/views/PlanningView.vue'),

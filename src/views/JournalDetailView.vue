@@ -16,10 +16,13 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError, JOURNAL_TYPES } from '@dash4/shared'
-import type { Assignee, Contact, Journal, JournalParticipantPayload, JournalPayload, JournalType } from '@dash4/shared'
+import type { Assignee, Contact, Document, Journal, JournalParticipantPayload, JournalPayload, JournalType } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import SectionPhotos from '@/components/journals/SectionPhotos.vue'
+import JournalEmailDialog from '@/components/journals/JournalEmailDialog.vue'
+import { formatDateTime } from '@/utils/clientRequests'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { fromApiDateTime, toApiDateTime } from '@/utils/tasks'
 
@@ -37,7 +40,8 @@ const tab = ref('documents')
 const people = ref<Assignee[]>([])
 const contacts = ref<Contact[]>([])
 const header = ref({ title: '', type: 'intervention' as JournalType, date: null as Date | null, starts: null as Date | null, ends: null as Date | null, summary: '' })
-const sections = ref<Array<{ title: string; body: string }>>([])
+const sections = ref<Array<{ id?: number; title: string; body: string; photos: Document[] }>>([])
+const emailOpen = ref(false)
 const newPerson = ref<number | null>(null)
 const newContact = ref<number | null>(null)
 const newName = ref('')
@@ -49,7 +53,7 @@ const errorDetail = (e: unknown) => (e instanceof ApiError ? (Object.values(e.er
 function set(j: Journal): void {
   journal.value = j
   header.value = { title: j.title, type: j.type.value, date: fromApiDate(j.date), starts: fromApiDateTime(j.starts_at), ends: fromApiDateTime(j.ends_at), summary: j.summary ?? '' }
-  sections.value = (j.sections ?? []).map((s) => ({ title: s.title, body: s.body ?? '' }))
+  sections.value = (j.sections ?? []).map((s) => ({ id: s.id, title: s.title, body: s.body ?? '', photos: s.photos ?? [] }))
 }
 
 async function load(): Promise<void> {
@@ -90,14 +94,31 @@ function saveHeader(field: 'title' | 'type' | 'date' | 'times' | 'summary'): voi
     : { title: h.title.trim() }
   void save(payload)
 }
-const saveSections = () => save({ sections: sections.value.filter((s) => s.title.trim()).map((s) => ({ title: s.title.trim(), body: s.body.trim() || null })) })
+// Chaque section garde son id : ses photos restent attachées
+const saveSections = () => save({ sections: sections.value.filter((s) => s.title.trim()).map((s) => ({ id: s.id, title: s.title.trim(), body: s.body.trim() || null })) })
 function addSection(): void {
-  sections.value.push({ title: 'Nouvelle section', body: '' })
+  sections.value.push({ title: 'Nouvelle section', body: '', photos: [] })
   void saveSections()
 }
 function removeSection(i: number): void {
-  sections.value.splice(i, 1)
-  void saveSections()
+  const s = sections.value[i]
+  const drop = () => {
+    sections.value.splice(i, 1)
+    void saveSections()
+  }
+  if (!s?.photos.length) return drop()
+  confirm.require({
+    header: 'Supprimer la section',
+    message: `Supprimer « ${s.title} » et ses ${s.photos.length} photo(s) ?`,
+    acceptProps: { label: 'Supprimer', severity: 'danger' },
+    rejectProps: { label: 'Annuler', severity: 'secondary', text: true },
+    accept: drop,
+  })
+}
+function onSent(j: Journal): void {
+  set(j)
+  tab.value = 'emails'
+  toast.add({ severity: 'success', summary: 'Rapport envoyé', detail: j.emails?.[0]?.to.join(', '), life: 4000 })
 }
 function moveSection(i: number, step: -1 | 1): void {
   const j = i + step
@@ -159,6 +180,7 @@ function remove(): void {
         <h1>{{ journal.title }}</h1>
         <div class="actions">
           <Button label="Rapport PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
+          <Button v-if="journal.can.update" label="Envoyer par e-mail" icon="pi pi-envelope" @click="emailOpen = true" />
           <Button v-if="journal.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
         </div>
       </div>
@@ -181,7 +203,7 @@ function remove(): void {
           <Card>
             <template #title>Sections</template>
             <template #content>
-              <div v-for="(s, i) in sections" :key="i" class="section">
+              <div v-for="(s, i) in sections" :key="s.id ?? `new-${i}`" class="section">
                 <div class="section-head">
                   <InputText v-model="s.title" class="grow" :disabled="!editable" @change="saveSections" />
                   <template v-if="editable">
@@ -191,6 +213,7 @@ function remove(): void {
                   </template>
                 </div>
                 <Textarea v-model="s.body" rows="3" auto-resize fluid :disabled="!editable" placeholder="Ce qui a été fait, constaté, ce qui reste…" @change="saveSections" />
+                <SectionPhotos v-if="s.id" :section-id="s.id" :photos="s.photos" :can-add="editable" :can-manage="!!journal.can.delete" />
               </div>
               <p v-if="!sections.length" class="muted">Aucune section.</p>
               <Button v-if="editable" label="Ajouter une section" icon="pi pi-plus" size="small" text @click="addSection" />
@@ -199,12 +222,27 @@ function remove(): void {
 
           <Tabs v-model:value="tab">
             <TabList>
-              <Tab value="documents">Photos et documents</Tab>
+              <Tab value="documents">Autres photos et documents</Tab>
               <Tab value="notes">Notes</Tab>
+              <Tab value="emails">Envois <span v-if="journal.emails?.length" class="count">{{ journal.emails.length }}</span></Tab>
             </TabList>
             <TabPanels>
               <TabPanel v-for="kind in (['documents', 'notes'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="journals" :id="journal!.id" :can-add="journal!.can.update" :can-manage="journal!.can.delete" />
+              </TabPanel>
+              <TabPanel value="emails">
+                <table v-if="journal!.emails?.length" class="list">
+                  <thead><tr><th>Date</th><th>Destinataires</th><th>Objet</th><th>Par</th></tr></thead>
+                  <tbody>
+                    <tr v-for="m in journal!.emails" :key="m.id">
+                      <td>{{ formatDateTime(m.sent_at) }}</td>
+                      <td>{{ m.to.join(', ') }}<div v-if="m.cc.length" class="muted small">Copie : {{ m.cc.join(', ') }}</div></td>
+                      <td>{{ m.subject }}</td>
+                      <td>{{ m.sender?.full_name ?? '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p v-else class="muted">Ce rapport n'a pas encore été envoyé par e-mail.</p>
               </TabPanel>
             </TabPanels>
           </Tabs>
@@ -244,6 +282,7 @@ function remove(): void {
           </Card>
         </aside>
       </div>
+      <JournalEmailDialog v-model:visible="emailOpen" :journal="journal" @sent="onSent" />
     </template>
   </div>
 </template>
@@ -340,5 +379,13 @@ function remove(): void {
 
 .small {
   font-size: 0.8rem;
+}
+
+.count {
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  font-size: 0.75rem;
 }
 </style>

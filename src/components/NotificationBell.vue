@@ -22,6 +22,12 @@ async function open(notification: AppNotification): Promise<void> {
   panel.value?.hide()
   if (notification.client_request_id) {
     void router.push({ name: 'client-requests', query: { demande: notification.client_request_id } })
+  } else if (notification.tech_access_request_id && notification.kind === 'access_request.created') {
+    void router.push({ name: 'tech-space', query: { onglet: 'demandes' } })
+  } else if (notification.tech_share_id || notification.tech_access_request_id) {
+    void router.push({ name: 'tech-space', query: { onglet: notification.tech_share_id ? 'infos' : 'demandes' } })
+  } else if (notification.task_id) {
+    void router.push({ name: 'task', params: { id: notification.task_id } })
   }
 }
 </script>
