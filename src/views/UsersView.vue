@@ -8,9 +8,10 @@ import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import Dialog from 'primevue/dialog'
 import { useToast } from 'primevue/usetoast'
 import { ApiError, ROLE_LABELS } from '@dash4/shared'
-import type { AccountType, RoleName, User } from '@dash4/shared'
+import type { AccountType, Cv, RoleName, User } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import UserFormDialog from '@/components/UserFormDialog.vue'
@@ -114,6 +115,19 @@ function onSaved(user: User): void {
 }
 
 /** Seul un administrateur modifie un administrateur (règle aussi vérifiée par l'API). */
+// CV partagés par l'utilisateur (administrateurs)
+const cvUser = ref<User | null>(null)
+const sharedCvs = ref<Cv[]>([])
+async function openCvs(user: User): Promise<void> {
+  cvUser.value = user
+  sharedCvs.value = await api.cvs.ofUser(user.id)
+}
+async function openCvPdf(cv: Cv): Promise<void> {
+  const url = URL.createObjectURL(await api.cvs.pdf(cv.id))
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 function canEdit(user: User): boolean {
   if (!auth.can('users.manage')) return false
   return !user.roles.some((r) => r.name === 'admin') || auth.isAdmin
@@ -184,8 +198,9 @@ onMounted(load)
       <Column header="Dernière connexion">
         <template #body="{ data }">{{ formatDate(data.last_login_at) }}</template>
       </Column>
-      <Column header="" style="width: 4rem">
+      <Column header="" style="width: 7rem">
         <template #body="{ data }">
+          <Button v-if="auth.isAdmin" icon="pi pi-id-card" text rounded aria-label="CV partagés" title="CV partagés" @click="openCvs(data)" />
           <Button
             v-if="canEdit(data)"
             icon="pi pi-pencil"
@@ -199,10 +214,24 @@ onMounted(load)
     </DataTable>
 
     <UserFormDialog v-model:visible="dialogOpen" :user="editedUser" @saved="onSaved" />
+
+    <Dialog :visible="cvUser !== null" modal :header="`CV partagés — ${cvUser?.full_name ?? ''}`" :style="{ width: '28rem' }" @update:visible="cvUser = null">
+      <p v-if="!sharedCvs.length" class="muted">Aucun CV partagé par cet utilisateur.</p>
+      <div v-for="cv in sharedCvs" :key="cv.id" class="cv-row">
+        <RouterLink :to="{ name: 'cv', params: { id: cv.id } }">{{ cv.name }}</RouterLink>
+        <Button icon="pi pi-file-pdf" text rounded aria-label="PDF" @click="openCvPdf(cv)" />
+      </div>
+    </Dialog>
   </div>
 </template>
 
 <style scoped>
+.cv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .filters {
   display: flex;
   gap: 0.75rem;

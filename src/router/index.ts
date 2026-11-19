@@ -259,6 +259,12 @@ export const router = createRouter({
           meta: { title: 'Mon profil' },
         },
         {
+          path: 'profil/cv/:id',
+          name: 'cv',
+          component: () => import('@/views/CvEditorView.vue'),
+          meta: { title: 'CV' },
+        },
+        {
           path: 'acces-refuse',
           name: 'forbidden',
           component: () => import('@/views/ForbiddenView.vue'),
