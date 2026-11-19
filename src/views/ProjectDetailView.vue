@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/auth'
 import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import TaskTable from '@/components/tasks/TaskTable.vue'
 import JournalTable from '@/components/journals/JournalTable.vue'
 import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
@@ -37,10 +38,11 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const project = ref<Project | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const editOpen = ref(false)
-const tab = ref('notes')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoBusy = ref(false)
 
@@ -235,6 +237,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
 
       <Tabs v-model:value="tab">
         <TabList>
+          <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
           <Tab value="notes">Notes <Badge v-if="project.notes_count" :value="project.notes_count" severity="secondary" /></Tab>
           <Tab value="links">Liens <Badge v-if="project.links_count" :value="project.links_count" severity="secondary" /></Tab>
           <Tab value="documents">
@@ -245,6 +248,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           <Tab v-if="canSeeJournals" value="journals">Journaux <Badge v-if="journals.length" :value="journals.length" severity="secondary" /></Tab>
         </TabList>
         <TabPanels>
+          <TabPanel value="comments"><CommentsPanel type="projects" :id="project.id" @changed="commentsCount = $event" /></TabPanel>
           <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel
               :kind="kind"
@@ -370,5 +374,13 @@ dd {
 .soon {
   font-size: 0.85rem;
   margin: 0;
+}
+
+.count {
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  font-size: 0.75rem;
 }
 </style>

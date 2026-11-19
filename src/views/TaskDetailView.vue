@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
@@ -19,6 +19,7 @@ import { ApiError } from '@dash4/shared'
 import type { Task, TaskStatus } from '@dash4/shared'
 import { api } from '@/services/api'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import TaskDialog from '@/components/tasks/TaskDialog.vue'
 import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -32,11 +33,12 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const task = ref<Task | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
 const editOpen = ref(false)
-const tab = ref('notes')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
 const newSubtask = ref('')
 const journalOpen = ref(false)
 const auth = useAuthStore()
@@ -158,11 +160,13 @@ function remove(): void {
 
           <Tabs v-model:value="tab">
             <TabList>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Photos et documents</Tab>
               <Tab value="links">Liens</Tab>
             </TabList>
             <TabPanels>
+              <TabPanel value="comments"><CommentsPanel type="tasks" :id="task!.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['notes', 'documents', 'links'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="tasks" :id="task!.id" :can-add="task!.can.progress" :can-manage="task!.can.delete" />
               </TabPanel>
@@ -308,5 +312,13 @@ function remove(): void {
 
 .small {
   font-size: 0.8rem;
+}
+
+.count {
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  font-size: 0.75rem;
 }
 </style>

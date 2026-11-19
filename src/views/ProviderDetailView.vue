@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Tabs from 'primevue/tabs'
@@ -17,6 +17,7 @@ import type { Provider, Purchase } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import ArticleList from '@/components/stock/ArticleList.vue'
 import LogoEditor from '@/components/stock/LogoEditor.vue'
 import ProviderFormDialog from '@/components/stock/ProviderFormDialog.vue'
@@ -32,11 +33,12 @@ const router = useRouter()
 
 const provider = ref<Provider | null>(null)
 const purchases = ref<Purchase[]>([])
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const editOpen = ref(false)
 const purchaseOpen = ref(false)
-const tab = ref('articles')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'articles')
 const canPurchases = computed(() => auth.canAny(['purchases.view', 'purchases.view.own']))
 const mapUrl = computed(() =>
   provider.value?.latitude != null && provider.value.longitude != null
@@ -140,6 +142,7 @@ function remove(): void {
           <Tab v-if="canPurchases" value="purchases">Achats <span class="count">{{ purchases.length }}</span></Tab>
           <Tab value="documents">Documents</Tab>
           <Tab value="links">Liens</Tab>
+          <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
           <Tab value="notes">Notes</Tab>
         </TabList>
         <TabPanels>
@@ -159,6 +162,7 @@ function remove(): void {
             </table>
             <p v-else class="muted">Aucun achat chez ce fournisseur.</p>
           </TabPanel>
+          <TabPanel value="comments"><CommentsPanel type="providers" :id="provider.id" @changed="commentsCount = $event" /></TabPanel>
           <TabPanel v-for="kind in (['documents', 'links', 'notes'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel :kind="kind" type="providers" :id="provider.id" :can-add="provider.can.update" :can-manage="provider.can.delete" />
           </TabPanel>

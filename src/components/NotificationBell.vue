@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { notificationTarget } from '@/utils/notifications'
 import Button from 'primevue/button'
 import Popover from 'primevue/popover'
 import OverlayBadge from 'primevue/overlaybadge'
@@ -20,15 +21,8 @@ function toggle(event: Event): void {
 async function open(notification: AppNotification): Promise<void> {
   if (!notification.read_at) await store.markRead(notification.id)
   panel.value?.hide()
-  if (notification.client_request_id) {
-    void router.push({ name: 'client-requests', query: { demande: notification.client_request_id } })
-  } else if (notification.tech_access_request_id && notification.kind === 'access_request.created') {
-    void router.push({ name: 'tech-space', query: { onglet: 'demandes' } })
-  } else if (notification.tech_share_id || notification.tech_access_request_id) {
-    void router.push({ name: 'tech-space', query: { onglet: notification.tech_share_id ? 'infos' : 'demandes' } })
-  } else if (notification.task_id) {
-    void router.push({ name: 'task', params: { id: notification.task_id } })
-  }
+  const target = notificationTarget(notification)
+  if (target) void router.push(target)
 }
 </script>
 

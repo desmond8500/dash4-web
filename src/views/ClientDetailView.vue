@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -21,6 +21,7 @@ import ClientRequestTable from '@/components/ClientRequestTable.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import QuoteTable from '@/components/quotes/QuoteTable.vue'
 import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
 import { useSettingsStore } from '@/stores/settings'
@@ -41,6 +42,7 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const client = ref<Client | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const clientDialog = ref(false)
@@ -53,7 +55,7 @@ const contacts = computed(() => client.value?.contacts ?? [])
 const canSeeProjects = computed(() => auth.canAny(['projects.view', 'projects.view.own']))
 const projects = ref<Project[]>([])
 const projectDialog = ref(false)
-const attachmentsTab = ref('notes')
+const attachmentsTab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
 
 async function loadProjects(): Promise<void> {
   if (!canSeeProjects.value) return
@@ -478,11 +480,13 @@ function contactEmails(contact: Contact): string[] {
 
       <Tabs v-model:value="attachmentsTab">
         <TabList>
+          <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
           <Tab value="notes">Notes</Tab>
           <Tab value="links">Liens</Tab>
           <Tab value="documents">Documents</Tab>
         </TabList>
         <TabPanels>
+          <TabPanel value="comments"><CommentsPanel type="clients" :id="client.id" @changed="commentsCount = $event" /></TabPanel>
           <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel
               :kind="kind"
@@ -601,5 +605,13 @@ dd {
 
 a {
   color: var(--p-primary-color);
+}
+
+.count {
+  margin-left: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  font-size: 0.75rem;
 }
 </style>

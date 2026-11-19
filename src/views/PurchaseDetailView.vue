@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
@@ -25,6 +25,7 @@ import type { Article, Purchase, PurchaseLine, PurchaseLinePayload } from '@dash
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import ArticlePicker from '@/components/stock/ArticlePicker.vue'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
@@ -37,10 +38,11 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const purchase = ref<Purchase | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
-const tab = ref('receptions')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'receptions')
 const showCosts = computed(() => auth.can('costs.view'))
 const editable = computed(() => !!purchase.value?.can.edit)
 const progress = computed(() => (purchase.value ? receivedProgress(purchase.value) : null))
@@ -293,6 +295,7 @@ async function receive(): Promise<void> {
             <TabList>
               <Tab value="receptions">Réceptions <span v-if="purchase.receptions?.length" class="count">{{ purchase.receptions.length }}</span></Tab>
               <Tab value="documents">Documents (facture fournisseur)</Tab>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
             </TabList>
             <TabPanels>
@@ -309,6 +312,7 @@ async function receive(): Promise<void> {
                 </div>
                 <p v-else class="muted">Rien de reçu pour le moment.</p>
               </TabPanel>
+              <TabPanel value="comments"><CommentsPanel type="purchases" :id="purchase.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['documents', 'notes'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="purchases" :id="purchase.id" :can-add="purchase.can.update || purchase.can.receive" :can-manage="purchase.can.order" />
               </TabPanel>

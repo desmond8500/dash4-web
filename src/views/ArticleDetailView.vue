@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
@@ -21,6 +21,7 @@ import type { Article, Project, StockMovementPayload } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import ArticleFormDialog from '@/components/stock/ArticleFormDialog.vue'
 import ArticlePicker from '@/components/stock/ArticlePicker.vue'
 import MovementTable from '@/components/stock/MovementTable.vue'
@@ -33,11 +34,12 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const article = ref<Article | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
 const editOpen = ref(false)
-const tab = ref('movements')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'movements')
 const imageInput = ref<HTMLInputElement | null>(null)
 const projects = ref<Project[]>([])
 
@@ -205,6 +207,7 @@ function remove(): void {
               <Tab value="dependencies">Articles liés <span v-if="article.dependencies?.length" class="count">{{ article.dependencies.length }}</span></Tab>
               <Tab value="documents">Documents</Tab>
               <Tab value="links">Liens</Tab>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
             </TabList>
             <TabPanels>
@@ -234,6 +237,7 @@ function remove(): void {
                   <ArticlePicker v-if="article.can.update" placeholder="Ajouter un article lié" @select="addDependency" />
                 </div>
               </TabPanel>
+              <TabPanel value="comments"><CommentsPanel type="articles" :id="article.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['documents', 'links', 'notes'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="articles" :id="article.id" :can-add="article.can.update" :can-manage="article.can.delete" />
               </TabPanel>

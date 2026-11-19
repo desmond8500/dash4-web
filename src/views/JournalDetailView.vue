@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -20,6 +20,7 @@ import type { Assignee, Contact, Document, Journal, JournalParticipantPayload, J
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import SectionPhotos from '@/components/journals/SectionPhotos.vue'
 import JournalEmailDialog from '@/components/journals/JournalEmailDialog.vue'
 import { formatDateTime } from '@/utils/clientRequests'
@@ -34,9 +35,10 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const journal = ref<Journal | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const busy = ref(false)
-const tab = ref('documents')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'documents')
 const people = ref<Assignee[]>([])
 const contacts = ref<Contact[]>([])
 const header = ref({ title: '', type: 'intervention' as JournalType, date: null as Date | null, starts: null as Date | null, ends: null as Date | null, summary: '' })
@@ -223,10 +225,12 @@ function remove(): void {
           <Tabs v-model:value="tab">
             <TabList>
               <Tab value="documents">Autres photos et documents</Tab>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="emails">Envois <span v-if="journal.emails?.length" class="count">{{ journal.emails.length }}</span></Tab>
             </TabList>
             <TabPanels>
+              <TabPanel value="comments"><CommentsPanel type="journals" :id="journal!.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['documents', 'notes'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="journals" :id="journal!.id" :can-add="journal!.can.update" :can-manage="journal!.can.delete" />
               </TabPanel>

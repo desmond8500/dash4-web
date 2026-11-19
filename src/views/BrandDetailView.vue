@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -17,6 +17,7 @@ import { ApiError } from '@dash4/shared'
 import type { Brand } from '@dash4/shared'
 import { api } from '@/services/api'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import ArticleList from '@/components/stock/ArticleList.vue'
 import LogoEditor from '@/components/stock/LogoEditor.vue'
 
@@ -27,9 +28,10 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const brand = ref<Brand | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
-const tab = ref('articles')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'articles')
 const form = ref({ name: '', description: '', website: '' })
 
 const errorDetail = (e: unknown) => (e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : (e as Error).message)
@@ -138,10 +140,12 @@ function remove(): void {
           <Tab value="articles">Articles <span class="count">{{ brand!.articles_count }}</span></Tab>
           <Tab value="links">Liens</Tab>
           <Tab value="documents">Documents</Tab>
+          <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
           <Tab value="notes">Notes</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="articles"><ArticleList :filters="{ brand_id: brand!.id }" /></TabPanel>
+          <TabPanel value="comments"><CommentsPanel type="brands" :id="brand!.id" @changed="commentsCount = $event" /></TabPanel>
           <TabPanel v-for="kind in (['links', 'documents', 'notes'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel :kind="kind" type="brands" :id="brand!.id" :can-add="brand!.can.update" :can-manage="brand!.can.delete" />
           </TabPanel>

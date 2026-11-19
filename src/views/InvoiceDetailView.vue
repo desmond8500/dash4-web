@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
@@ -26,6 +26,7 @@ import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import InvoiceEmailDialog from '@/components/invoices/InvoiceEmailDialog.vue'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
@@ -39,10 +40,11 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const invoice = ref<Invoice | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
-const tab = ref('payments')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'payments')
 const banks = ref<BankAccount[]>([])
 const emailOpen = ref(false)
 
@@ -346,6 +348,7 @@ function removePayment(paymentId: number): void {
           <Tabs v-model:value="tab">
             <TabList>
               <Tab value="payments">Paiements <span v-if="invoice.payments?.length" class="count">{{ invoice.payments.length }}</span></Tab>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Documents</Tab>
               <Tab value="links">Liens</Tab>
@@ -395,6 +398,7 @@ function removePayment(paymentId: number): void {
                 </table>
                 <p v-else class="muted">Cette facture n'a pas encore été envoyée par e-mail.</p>
               </TabPanel>
+              <TabPanel value="comments"><CommentsPanel type="invoices" :id="invoice.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['notes', 'documents', 'links'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="invoices" :id="invoice.id" :can-add="invoice.can.update" :can-manage="invoice.can.update" />
               </TabPanel>

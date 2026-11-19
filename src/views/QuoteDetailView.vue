@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Card from 'primevue/card'
@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import QuoteSectionEditor from '@/components/quotes/QuoteSectionEditor.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import QuoteDepositsPanel from '@/components/quotes/QuoteDepositsPanel.vue'
 import QuoteExpensesPanel from '@/components/quotes/QuoteExpensesPanel.vue'
 import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel.vue'
@@ -48,10 +49,11 @@ const confirm = useConfirm()
 const router = useRouter()
 
 const quote = ref<Quote | null>(null)
+const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
-const tab = ref('notes')
+const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
 const signedInput = ref<HTMLInputElement | null>(null)
 const banks = ref<BankAccount[]>([])
 
@@ -432,6 +434,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
 
           <Tabs v-model:value="tab" scrollable>
             <TabList>
+              <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Documents</Tab>
               <Tab value="links">Liens</Tab>
@@ -494,6 +497,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
                 </table>
                 <p v-else class="muted">Ce devis n'a pas encore été envoyé par e-mail.</p>
               </TabPanel>
+              <TabPanel value="comments"><CommentsPanel type="quotes" :id="quote.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['notes', 'documents', 'links'] as const)" :key="kind" :value="kind">
                 <AttachmentsPanel :kind="kind" type="quotes" :id="quote.id" :can-add="quote.can.update" :can-manage="quote.can.delete" />
               </TabPanel>
