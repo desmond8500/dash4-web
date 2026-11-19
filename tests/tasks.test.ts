@@ -41,6 +41,7 @@ describe('tâches et planning', () => {
   it('montre Tâches et Planning avec un droit sur les tâches', () => {
     const labels = (permissions: string[]) => visibleMenu((p) => p.some((x) => permissions.includes(x))).map((e) => e.label)
     expect(labels(['tasks.view.own'])).toEqual(expect.arrayContaining(['Tâches', 'Planning']))
+    expect(labels(['journals.view.own'])).toContain('Journaux')
     expect(labels(['clients.view'])).not.toContain('Planning')
   })
 })

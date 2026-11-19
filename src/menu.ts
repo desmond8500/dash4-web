@@ -24,6 +24,7 @@ export const MENU: MenuEntry[] = [
   { label: 'Projets', icon: 'pi pi-briefcase', to: '/projets', permissions: ['projects.view', 'projects.view.own'] },
   { label: 'Tâches', icon: 'pi pi-check-square', to: '/taches', permissions: ['tasks.view', 'tasks.view.own'] },
   { label: 'Planning', icon: 'pi pi-calendar', to: '/planning', permissions: ['tasks.view', 'tasks.view.own'] },
+  { label: 'Journaux', icon: 'pi pi-book', to: '/journaux', permissions: ['journals.view', 'journals.view.own'] },
   { label: 'Devis', icon: 'pi pi-file-edit', to: '/devis', permissions: ['quotes.view', 'quotes.view.own'] },
   { label: 'Factures', icon: 'pi pi-receipt', to: '/factures', permissions: ['invoices.view'] },
   { label: 'Stock', icon: 'pi pi-box', to: '/stock', permissions: ['stock.view'] },

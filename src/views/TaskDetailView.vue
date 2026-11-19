@@ -20,6 +20,8 @@ import type { Task, TaskStatus } from '@dash4/shared'
 import { api } from '@/services/api'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import TaskDialog from '@/components/tasks/TaskDialog.vue'
+import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
+import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
 import { taskStatusSeverity, timeRange } from '@/utils/tasks'
@@ -36,6 +38,8 @@ const busy = ref(false)
 const editOpen = ref(false)
 const tab = ref('notes')
 const newSubtask = ref('')
+const journalOpen = ref(false)
+const auth = useAuthStore()
 
 const progress = computed(() => (task.value?.subtasks_count ? Math.round((task.value.subtasks_done / task.value.subtasks_count) * 100) : 0))
 const mapUrl = computed(() => {
@@ -123,6 +127,7 @@ function remove(): void {
           <template v-if="task!.can.progress">
             <Button v-for="s in nextStatuses" :key="s.value" :label="s.label" :icon="s.icon" :severity="s.severity" :loading="busy" @click="setStatus(s.value)" />
           </template>
+          <Button v-if="auth.can('journals.create')" label="Rédiger le journal" icon="pi pi-book" severity="secondary" @click="journalOpen = true" />
           <Button v-if="task!.can.update" label="Modifier" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
           <Button v-if="task!.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
         </div>
@@ -201,6 +206,7 @@ function remove(): void {
         </Card>
       </div>
 
+      <JournalCreateDialog v-model:visible="journalOpen" :task="task" @created="(j) => router.push({ name: 'journal', params: { id: j.id } })" />
       <TaskDialog v-model:visible="editOpen" :task="task" @saved="(t) => (task = t)" />
     </template>
   </div>

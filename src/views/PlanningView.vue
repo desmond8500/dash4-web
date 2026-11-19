@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import { ApiError } from '@dash4/shared'
-import type { Task, TaskPayload } from '@dash4/shared'
+import type { Journal, Task, TaskPayload, UserRef } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import TaskDialog from '@/components/tasks/TaskDialog.vue'
@@ -27,7 +27,18 @@ const scheduled = ref<Task[]>([])
 const unscheduled = ref<Task[]>([])
 const onlyMine = ref(!auth.can('tasks.view'))
 const loading = ref(false)
-const rows = computed(() => planningRows(scheduled.value))
+const journals = ref<Journal[]>([])
+const journalPeople = computed<UserRef[]>(() => {
+  const map = new Map<number, UserRef>()
+  for (const j of journals.value) for (const p of j.participants ?? []) if (p.user_id) map.set(p.user_id, { id: p.user_id, full_name: p.name } as UserRef)
+  return [...map.values()]
+})
+const rows = computed(() => planningRows(scheduled.value, journalPeople.value))
+/** Journaux du jour pour une ligne (personne qui est intervenue, ou aucune). */
+const journalsFor = (day: string, personId: number | null) =>
+  journals.value.filter(
+    (j) => j.date === day && (personId ? (j.participants ?? []).some((p) => p.user_id === personId) : !(j.participants ?? []).some((p) => p.user_id)),
+  )
 const dayLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
 const weekLabel = computed(() => {
   const first = new Date(`${days.value[0]}T00:00:00`)
@@ -47,6 +58,9 @@ async function load(): Promise<void> {
     ])
     scheduled.value = week.data
     unscheduled.value = todo.data
+    journals.value = auth.canAny(['journals.view', 'journals.view.own'])
+      ? (await api.journals.list({ from: days.value[0], to: days.value[6], per_page: 200, ...(onlyMine.value ? { mine: true } : {}) }).catch(() => ({ data: [] as Journal[] }))).data
+      : []
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Planning indisponible', detail: errorDetail(e), life: 5000 })
   } finally {
@@ -157,6 +171,10 @@ const open = (t: Task) => router.push({ name: 'task', params: { id: t.id } })
                   <span class="name">{{ t.title }}</span>
                   <small v-if="t.project" class="muted">{{ t.project.name }}</small>
                 </div>
+                <div v-for="j in journalsFor(d, row.person?.id ?? null)" :key="`j${j.id}`" class="card journal" @click="router.push({ name: 'journal', params: { id: j.id } })">
+                  <small class="time"><i class="pi pi-book" /> Journal</small>
+                  <span class="name">{{ j.title }}</span>
+                </div>
               </td>
             </tr>
             <tr v-if="!rows.length">
@@ -165,7 +183,7 @@ const open = (t: Task) => router.push({ name: 'task', params: { id: t.id } })
             </tr>
           </tbody>
         </table>
-        <p class="muted small">Glissez une tâche pour la déplacer ou la confier à quelqu'un d'autre ; double-cliquez une case vide pour créer une tâche ce jour-là.</p>
+        <p class="muted small"><span class="legend-journal" /> journaux d'intervention de la semaine. Glissez une tâche pour la déplacer ou la confier à quelqu'un d'autre ; double-cliquez une case vide pour créer une tâche ce jour-là.</p>
       </div>
 
       <aside class="unscheduled">
@@ -302,6 +320,11 @@ const open = (t: Task) => router.push({ name: 'task', params: { id: t.id } })
   font-weight: 700;
 }
 
+.card.journal {
+  border-left-color: var(--p-purple-500);
+  background: color-mix(in srgb, var(--p-purple-500) 6%, var(--p-content-background));
+}
+
 .card.late {
   border-left-color: var(--p-red-500);
 }
@@ -320,5 +343,13 @@ const open = (t: Task) => router.push({ name: 'task', params: { id: t.id } })
 
 .small {
   font-size: 0.8rem;
+}
+
+.legend-journal {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+  background: var(--p-purple-500);
 }
 </style>

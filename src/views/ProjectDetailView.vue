@@ -14,13 +14,15 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Project, Quote, Task } from '@dash4/shared'
+import type { Journal, Project, Quote, Task } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import TaskTable from '@/components/tasks/TaskTable.vue'
+import JournalTable from '@/components/journals/JournalTable.vue'
+import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
 import TaskDialog from '@/components/tasks/TaskDialog.vue'
 import QuoteTable from '@/components/quotes/QuoteTable.vue'
 import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
@@ -69,6 +71,15 @@ async function loadTasks(): Promise<void> {
   tasks.value = await api.tasks.list({ project_id: Number(props.id), per_page: 100 }).then((r) => r.data).catch(() => [])
 }
 watch(() => props.id, loadTasks, { immediate: true })
+
+const canSeeJournals = computed(() => auth.canAny(['journals.view', 'journals.view.own']))
+const journals = ref<Journal[]>([])
+const journalDialog = ref(false)
+async function loadJournals(): Promise<void> {
+  if (!canSeeJournals.value) return
+  journals.value = await api.journals.list({ project_id: Number(props.id), per_page: 100 }).then((r) => r.data).catch(() => [])
+}
+watch(() => props.id, loadJournals, { immediate: true })
 void settings.load()
 const canDelete = computed(() => auth.can('projects.delete'))
 const map = computed(() =>
@@ -231,7 +242,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           </Tab>
           <Tab v-if="canSeeQuotes" value="quotes">Devis <Badge v-if="quotes.length" :value="quotes.length" severity="secondary" /></Tab>
           <Tab v-if="canSeeTasks" value="tasks">Tâches <Badge v-if="tasks.length" :value="tasks.length" severity="secondary" /></Tab>
-          <Tab value="journals" disabled>Journaux</Tab>
+          <Tab v-if="canSeeJournals" value="journals">Journaux <Badge v-if="journals.length" :value="journals.length" severity="secondary" /></Tab>
         </TabList>
         <TabPanels>
           <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
@@ -262,9 +273,15 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
             <TaskTable :tasks="tasks" hide-project />
             <TaskDialog v-model:visible="taskDialog" :project-id="project.id" @saved="(t) => router.push({ name: 'task', params: { id: t.id } })" />
           </TabPanel>
+          <TabPanel v-if="canSeeJournals" value="journals">
+            <div class="tab-actions">
+              <Button v-if="auth.can('journals.create')" label="Nouveau journal" icon="pi pi-plus" size="small" @click="journalDialog = true" />
+            </div>
+            <JournalTable :journals="journals" hide-project />
+            <JournalCreateDialog v-model:visible="journalDialog" :project-id="project.id" @created="(j) => router.push({ name: 'journal', params: { id: j.id } })" />
+          </TabPanel>
         </TabPanels>
       </Tabs>
-      <p class="muted soon">L'onglet Journaux s'activera avec ce module.</p>
 
       <ProjectFormDialog v-model:visible="editOpen" :project="project" @saved="load" />
     </template>
