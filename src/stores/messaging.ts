@@ -4,16 +4,20 @@ import { api } from '@/services/api'
 import { useAuthStore } from './auth'
 import { shouldNotify } from '@/utils/messaging'
 
-const REFRESH_MS = 30_000
+/** Onglet affiché : toutes les 30 s ; onglet caché : toutes les 2 min, juste pour la notification. */
+export const VISIBLE_MS = 30_000
+export const HIDDEN_MS = 120_000
 
 /**
- * Compteur de messages non lus (menu) relevé toutes les 30 secondes, et notification du navigateur
- * quand un message arrive alors que l'onglet n'est pas au premier plan (si la personne l'a permis).
+ * Compteur de messages non lus (menu), et notification du navigateur quand un message arrive alors
+ * que l'onglet n'est pas au premier plan (si la personne l'a permis). Relevé à un rythme lent quand
+ * l'onglet est caché, tout de suite quand on y revient.
  */
 export const useMessagingStore = defineStore('messaging', () => {
   const auth = useAuthStore()
   const unread = ref(0)
-  let timer: ReturnType<typeof setInterval> | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let started = false
 
   async function refresh(): Promise<void> {
     if (!auth.isAuthenticated) return
@@ -29,15 +33,28 @@ export const useMessagingStore = defineStore('messaging', () => {
     }
   }
 
+  function schedule(): void {
+    if (timer) clearTimeout(timer)
+    timer = started ? setTimeout(() => void refresh().finally(schedule), document.visibilityState === 'visible' ? VISIBLE_MS : HIDDEN_MS) : null
+  }
+
+  function onVisibility(): void {
+    if (document.visibilityState === 'visible') void refresh().finally(schedule)
+    else schedule()
+  }
+
   function start(): void {
-    if (timer) return
-    void refresh()
-    timer = setInterval(() => void refresh(), REFRESH_MS)
+    if (started) return
+    started = true
+    document.addEventListener('visibilitychange', onVisibility)
+    void refresh().finally(schedule)
   }
 
   function stop(): void {
-    if (timer) clearInterval(timer)
+    started = false
+    if (timer) clearTimeout(timer)
     timer = null
+    document.removeEventListener('visibilitychange', onVisibility)
   }
 
   return { unread, refresh, start, stop }

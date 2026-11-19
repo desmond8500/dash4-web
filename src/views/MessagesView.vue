@@ -11,7 +11,7 @@ import MultiSelect from 'primevue/multiselect'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { ApiError, filterConversations, lastMessageId, mergeMessages, messageTime, readBy, sameGroup } from '@dash4/shared'
+import { ApiError, createPoller, filterConversations, lastMessageId, mergeMessages, messageTime, readBy, sameGroup } from '@dash4/shared'
 import type { Conversation, Document, Message, MessagingUser } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -20,8 +20,8 @@ import { addableUsers, isSendKey } from '@/utils/messaging'
 import { documentUrl, isImageDocument, openDocuments } from '@/utils/lightbox'
 import NewConversationDialog from '@/components/messages/NewConversationDialog.vue'
 
-const POLL_MS = 5_000
-const LIST_MS = 20_000
+/** Liste des conversations : toutes les 30 s, seulement onglet affiché. */
+const LIST_MS = 30_000
 
 const route = useRoute()
 const router = useRouter()
@@ -48,7 +48,8 @@ const newOpen = ref(false)
 const membersOpen = ref(false)
 const toAdd = ref<number[]>([])
 const notifyAsked = ref(typeof Notification === 'undefined' || Notification.permission !== 'default')
-let pollTimer: ReturnType<typeof setInterval> | null = null
+// Conversation ouverte : 5 s après un échange, puis 15, 30, 60 s si rien n'arrive ; arrêtée onglet caché
+const poller = createPoller(() => poll())
 let listTimer: ReturnType<typeof setInterval> | null = null
 let syncedAt: string | null = null
 
@@ -83,12 +84,13 @@ async function openConversation(id: number | null): Promise<void> {
   }
 }
 
-async function poll(): Promise<void> {
+/** Relève les nouveaux messages ; true s'il y avait du nouveau (le rythme reste rapide). */
+async function poll(): Promise<boolean> {
   const id = currentId.value
-  if (!id || document.visibilityState !== 'visible') return
+  if (!id || document.visibilityState !== 'visible') return false
   try {
     const page = await api.messaging.messages(id, { after_id: lastMessageId(messages.value), updated_since: syncedAt ?? undefined })
-    if (id !== currentId.value) return
+    if (id !== currentId.value) return false
     syncedAt = page.meta.server_time
     applyReads(page.meta.reads)
     if (page.data.length) {
@@ -98,8 +100,10 @@ async function poll(): Promise<void> {
       await markRead()
       if (atBottom) await scrollDown()
     }
+    return page.data.length > 0
   } catch {
-    // réseau : on réessaiera
+    // réseau : on réessaiera, plus lentement
+    return false
   }
 }
 
@@ -172,6 +176,7 @@ async function send(): Promise<void> {
     thumbnails(message)
     c.last_message = { id: message.id, excerpt: body || 'Fichier', author: message.author ?? null, created_at: message.created_at }
     c.last_message_at = message.created_at
+    poller.poke()
     await scrollDown()
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Message non envoyé', detail: errorDetail(e), life: 5000 })
@@ -269,12 +274,18 @@ const isMine = (m: Message) => m.user_id === auth.user?.id
 const seenBy = (m: Message) => (current.value && isMine(m) ? readBy(m, current.value.members) : [])
 const lastMineId = computed(() => [...messages.value].reverse().find((m) => isMine(m) && !m.deleted_at)?.id ?? null)
 
-watch(currentId, (id) => void openConversation(id))
+watch(currentId, (id) => {
+  void openConversation(id)
+  poller.poke()
+})
 
 function onVisible(): void {
   if (document.visibilityState === 'visible') {
-    void poll()
+    poller.start()
+    void loadList().catch(() => undefined)
     void markRead()
+  } else {
+    poller.stop()
   }
 }
 
@@ -287,12 +298,14 @@ onMounted(async () => {
     if (existing) void router.replace({ name: 'messages', params: { id: existing.id } })
     else newOpen.value = true
   }
-  pollTimer = setInterval(() => void poll(), POLL_MS)
-  listTimer = setInterval(() => void loadList().catch(() => undefined), LIST_MS)
+  if (document.visibilityState === 'visible') poller.start()
+  listTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') void loadList().catch(() => undefined)
+  }, LIST_MS)
   document.addEventListener('visibilitychange', onVisible)
 })
 onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer)
+  poller.stop()
   if (listTimer) clearInterval(listTimer)
   document.removeEventListener('visibilitychange', onVisible)
 })
