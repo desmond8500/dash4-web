@@ -20,6 +20,10 @@ import { useAuthStore } from '@/stores/auth'
 import { formatDate, toApiDate } from '@/utils/projects'
 import { equipmentStatusSeverity, progressColor } from '@/utils/site'
 import EquipmentDialog from './EquipmentDialog.vue'
+import PlansPanel from './PlansPanel.vue'
+import QuantitiesPanel from './QuantitiesPanel.vue'
+import SheetsPanel from './SheetsPanel.vue'
+import SelectButton from 'primevue/selectbutton'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 
 /** Chantier d'un projet : bâtiments, niveaux et pièces ; systèmes installés, avancement et équipements. */
@@ -30,6 +34,26 @@ const toast = useToast()
 const confirm = useConfirm()
 
 const site = ref<Site | null>(null)
+const view = ref<'installation' | 'plans' | 'quantities' | 'sheets'>('installation')
+const views = [
+  { value: 'installation', label: 'Installation' },
+  { value: 'plans', label: 'Plans' },
+  { value: 'quantities', label: 'Quantitatifs' },
+  { value: 'sheets', label: 'Fiches' },
+]
+const doeLoading = ref(false)
+async function openDoe(): Promise<void> {
+  doeLoading.value = true
+  try {
+    const url = URL.createObjectURL(await api.doe(props.projectId))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'DOE impossible', detail: errorDetail(e), life: 5000 })
+  } finally {
+    doeLoading.value = false
+  }
+}
 const loading = ref(true)
 const catalog = ref<SiteSystem[]>([])
 const openSystems = ref<Record<number, boolean>>({})
@@ -162,10 +186,16 @@ async function removeCatalog(id: number): Promise<void> {
       <div><span class="muted">Équipements</span><strong>{{ site!.equipment_count }}</strong></div>
       <div><span class="muted">Bâtiments</span><strong>{{ site!.buildings.length }}</strong></div>
       <span class="grow" />
+      <Button label="DOE (PDF)" icon="pi pi-book" text size="small" :loading="doeLoading" @click="openDoe" />
       <Button v-if="auth.can('sites.create')" label="Catalogue des systèmes" icon="pi pi-list" text size="small" @click="openCatalog" />
     </div>
 
-    <div class="layout">
+    <SelectButton v-model="view" :options="views" option-label="label" option-value="value" :allow-empty="false" />
+    <PlansPanel v-if="view === 'plans'" :site="site!" />
+    <QuantitiesPanel v-else-if="view === 'quantities'" :site="site!" />
+    <SheetsPanel v-else-if="view === 'sheets'" :site="site!" />
+
+    <div v-show="view === 'installation'" class="layout">
       <!-- Bâtiments -->
       <Card class="places">
         <template #title>Bâtiments</template>
