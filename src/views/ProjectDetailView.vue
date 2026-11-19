@@ -14,12 +14,14 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError } from '@dash4/shared'
-import type { Project, Quote } from '@dash4/shared'
+import type { Project, Quote, Task } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import TaskTable from '@/components/tasks/TaskTable.vue'
+import TaskDialog from '@/components/tasks/TaskDialog.vue'
 import QuoteTable from '@/components/quotes/QuoteTable.vue'
 import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
 import { useSettingsStore } from '@/stores/settings'
@@ -58,6 +60,15 @@ async function loadQuotes(): Promise<void> {
 }
 
 watch(() => props.id, loadQuotes, { immediate: true })
+
+const canSeeTasks = computed(() => auth.canAny(['tasks.view', 'tasks.view.own']))
+const tasks = ref<Task[]>([])
+const taskDialog = ref(false)
+async function loadTasks(): Promise<void> {
+  if (!canSeeTasks.value) return
+  tasks.value = await api.tasks.list({ project_id: Number(props.id), per_page: 100 }).then((r) => r.data).catch(() => [])
+}
+watch(() => props.id, loadTasks, { immediate: true })
 void settings.load()
 const canDelete = computed(() => auth.can('projects.delete'))
 const map = computed(() =>
@@ -219,7 +230,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
             Documents <Badge v-if="project.documents_count" :value="project.documents_count" severity="secondary" />
           </Tab>
           <Tab v-if="canSeeQuotes" value="quotes">Devis <Badge v-if="quotes.length" :value="quotes.length" severity="secondary" /></Tab>
-          <Tab value="tasks" disabled>Tâches</Tab>
+          <Tab v-if="canSeeTasks" value="tasks">Tâches <Badge v-if="tasks.length" :value="tasks.length" severity="secondary" /></Tab>
           <Tab value="journals" disabled>Journaux</Tab>
         </TabList>
         <TabPanels>
@@ -244,9 +255,16 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
               @created="(q) => router.push({ name: 'quote', params: { id: q.id } })"
             />
           </TabPanel>
+          <TabPanel v-if="canSeeTasks" value="tasks">
+            <div class="tab-actions">
+              <Button v-if="auth.can('tasks.create')" label="Nouvelle tâche" icon="pi pi-plus" size="small" @click="taskDialog = true" />
+            </div>
+            <TaskTable :tasks="tasks" hide-project />
+            <TaskDialog v-model:visible="taskDialog" :project-id="project.id" @saved="(t) => router.push({ name: 'task', params: { id: t.id } })" />
+          </TabPanel>
         </TabPanels>
       </Tabs>
-      <p class="muted soon">Les onglets Tâches et Journaux s'activeront avec ces modules.</p>
+      <p class="muted soon">L'onglet Journaux s'activera avec ce module.</p>
 
       <ProjectFormDialog v-model:visible="editOpen" :project="project" @saved="load" />
     </template>

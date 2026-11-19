@@ -33,7 +33,7 @@ import { formatDateTime } from '@/utils/clientRequests'
  */
 const props = defineProps<{ request: ClientRequest | null; clientId?: number | null }>()
 const visible = defineModel<boolean>('visible', { required: true })
-const emit = defineEmits<{ saved: [request: ClientRequest]; converted: [target: { type: 'project' | 'quote'; id: number }] }>()
+const emit = defineEmits<{ saved: [request: ClientRequest]; converted: [target: { type: 'project' | 'quote' | 'task'; id: number }] }>()
 
 const auth = useAuthStore()
 const isEdit = computed(() => props.request !== null)
@@ -115,12 +115,20 @@ async function searchClients(event: AutoCompleteCompleteEvent): Promise<void> {
 const convertible = computed(() => !!props.request && !props.request.converted_to && auth.can('client_requests.convert'))
 const canConvert = computed(() => convertible.value && auth.can('projects.create'))
 const canConvertQuote = computed(() => convertible.value && auth.can('quotes.create'))
-const convertType = ref<'project' | 'quote'>('project')
+const CONVERTED: Record<string, { label: string; route: string }> = {
+  quote: { label: 'devis', route: 'quote' },
+  task: { label: 'tâche', route: 'task' },
+  project: { label: 'projet', route: 'project' },
+}
+const convertedLabel = (type: string) => CONVERTED[type]?.label ?? 'projet'
+const convertedRoute = (type: string) => CONVERTED[type]?.route ?? 'project'
+const canConvertTask = computed(() => convertible.value && auth.can('tasks.create'))
+const convertType = ref<'project' | 'quote' | 'task'>('project')
 const convertOpen = ref(false)
 const convertName = ref('')
 const converting = ref(false)
 
-function openConvert(type: 'project' | 'quote' = 'project'): void {
+function openConvert(type: 'project' | 'quote' | 'task' = 'project'): void {
   convertType.value = type
   const body = props.request?.body.replace(/\s+/g, ' ').trim() ?? ''
   convertName.value = body.length > 80 ? `${body.slice(0, 79)}…` : body
@@ -130,7 +138,7 @@ function openConvert(type: 'project' | 'quote' = 'project'): void {
 async function convert(): Promise<void> {
   if (!props.request) return
   const client = form.client && typeof form.client === 'object' ? form.client : null
-  if (!client) {
+  if (!client && convertType.value !== 'task') {
     errors.value = { client_id: ['Choisissez le client du projet.'] }
     convertOpen.value = false
     more.value = true
@@ -141,12 +149,12 @@ async function convert(): Promise<void> {
     const result = await api.clientRequests.convert(props.request.id, {
       type: convertType.value,
       name: convertName.value.trim() || undefined,
-      client_id: client.id,
+      client_id: client?.id,
     })
     convertOpen.value = false
     visible.value = false
     emit('saved', result.request)
-    const created = result.quote ?? result.project
+    const created = result.task ?? result.quote ?? result.project
     if (created) emit('converted', { type: convertType.value, id: created.id })
   } catch (e) {
     generalError.value = e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : 'Transformation impossible.'
@@ -240,9 +248,9 @@ async function save(): Promise<void> {
       </div>
 
       <Message v-if="props.request?.converted_to" class="form-field--full" severity="success" :closable="false">
-        Transformée en {{ props.request.converted_to.type === 'quote' ? 'devis' : 'projet' }} —
+        Transformée en {{ convertedLabel(props.request.converted_to.type) }} —
         <RouterLink
-          :to="{ name: props.request.converted_to.type === 'quote' ? 'quote' : 'project', params: { id: props.request.converted_to.id } }"
+          :to="{ name: convertedRoute(props.request.converted_to.type), params: { id: props.request.converted_to.id } }"
           @click="visible = false"
         >
           l'ouvrir
@@ -355,6 +363,7 @@ async function save(): Promise<void> {
 
     <template #footer>
       <div class="convert">
+        <Button v-if="canConvertTask" label="En tâche" icon="pi pi-check-square" severity="secondary" outlined @click="openConvert('task')" />
         <Button v-if="canConvertQuote" label="En devis" icon="pi pi-file-edit" severity="secondary" outlined @click="openConvert('quote')" />
         <Button v-if="canConvert" label="En projet" icon="pi pi-briefcase" severity="secondary" outlined @click="openConvert('project')" />
       </div>
@@ -363,18 +372,18 @@ async function save(): Promise<void> {
     </template>
   </Dialog>
 
-  <Dialog v-model:visible="convertOpen" :header="convertType === 'quote' ? 'Transformer en devis' : 'Transformer en projet'" modal :style="{ width: '480px' }" :breakpoints="{ '520px': '95vw' }">
+  <Dialog v-model:visible="convertOpen" :header="{ quote: 'Transformer en devis', task: 'Transformer en tâche', project: 'Transformer en projet' }[convertType]" modal :style="{ width: '480px' }" :breakpoints="{ '520px': '95vw' }">
     <div class="form-field">
-      <label for="convert-name">{{ convertType === 'quote' ? 'Objet du devis' : 'Nom du projet' }}</label>
+      <label for="convert-name">{{ { quote: 'Objet du devis', task: 'Titre de la tâche', project: 'Nom du projet' }[convertType] }}</label>
       <InputText id="convert-name" v-model="convertName" autofocus />
       <small class="muted">
         Client : {{ form.client && typeof form.client === 'object' ? form.client.name : 'à choisir dans la demande' }}.
-        La demande passera à « Traitée » et gardera le lien vers {{ convertType === 'quote' ? 'le devis' : 'le projet' }}.
+        La demande passera à « Traitée » et gardera le lien vers {{ { quote: 'le devis', task: 'la tâche', project: 'le projet' }[convertType] }}.
       </small>
     </div>
     <template #footer>
       <Button label="Annuler" severity="secondary" text @click="convertOpen = false" />
-      <Button :label="convertType === 'quote' ? 'Créer le devis' : 'Créer le projet'" icon="pi pi-check" :loading="converting" @click="convert" />
+      <Button :label="{ quote: 'Créer le devis', task: 'Créer la tâche', project: 'Créer le projet' }[convertType]" icon="pi pi-check" :loading="converting" @click="convert" />
     </template>
   </Dialog>
 </template>

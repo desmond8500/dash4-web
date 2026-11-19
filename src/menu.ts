@@ -22,6 +22,8 @@ export const MENU: MenuEntry[] = [
     badge: 'client_requests',
   },
   { label: 'Projets', icon: 'pi pi-briefcase', to: '/projets', permissions: ['projects.view', 'projects.view.own'] },
+  { label: 'Tâches', icon: 'pi pi-check-square', to: '/taches', permissions: ['tasks.view', 'tasks.view.own'] },
+  { label: 'Planning', icon: 'pi pi-calendar', to: '/planning', permissions: ['tasks.view', 'tasks.view.own'] },
   { label: 'Devis', icon: 'pi pi-file-edit', to: '/devis', permissions: ['quotes.view', 'quotes.view.own'] },
   { label: 'Factures', icon: 'pi pi-receipt', to: '/factures', permissions: ['invoices.view'] },
   { label: 'Stock', icon: 'pi pi-box', to: '/stock', permissions: ['stock.view'] },

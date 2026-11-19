@@ -165,6 +165,25 @@ export const router = createRouter({
           meta: { title: 'Comptabilité', permissions: ['accounting.view'] },
         },
         {
+          path: 'taches',
+          name: 'tasks',
+          component: () => import('@/views/TasksView.vue'),
+          meta: { title: 'Tâches', permissions: ['tasks.view', 'tasks.view.own'] },
+        },
+        {
+          path: 'taches/:id(\\d+)',
+          name: 'task',
+          component: () => import('@/views/TaskDetailView.vue'),
+          props: true,
+          meta: { title: 'Tâche', permissions: ['tasks.view', 'tasks.view.own'] },
+        },
+        {
+          path: 'planning',
+          name: 'planning',
+          component: () => import('@/views/PlanningView.vue'),
+          meta: { title: 'Planning', permissions: ['tasks.view', 'tasks.view.own'] },
+        },
+        {
           path: 'contacts',
           name: 'contacts',
           component: () => import('@/views/ContactsView.vue'),
