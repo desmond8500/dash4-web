@@ -184,7 +184,7 @@ function moveItem(section: CvSection, j: number, delta: -1 | 1): void {
             <label>Intitulé <InputText v-model="item.title" :disabled="readOnly" /></label>
             <template v-if="cvSectionHasLevel(section.type)">
               <label>Précision <InputText v-model="item.subtitle" :disabled="readOnly" placeholder="Courant, bilingue…" /></label>
-              <label>Niveau <Rating v-model="item.level" :stars="5" :disabled="readOnly" /></label>
+              <label>Niveau <Rating :model-value="item.level ?? undefined" :stars="5" :disabled="readOnly" @update:model-value="item.level = $event ?? null" /></label>
             </template>
             <template v-else>
               <label>{{ section.type === 'education' ? 'Établissement' : 'Entreprise / client' }} <InputText v-model="item.subtitle" :disabled="readOnly" /></label>
