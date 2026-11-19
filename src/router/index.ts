@@ -197,6 +197,19 @@ export const router = createRouter({
           meta: { title: 'Tâche', permissions: ['tasks.view', 'tasks.view.own'] },
         },
         {
+          path: 'contrats',
+          name: 'contracts',
+          component: () => import('@/views/ContractsView.vue'),
+          meta: { title: 'Contrats', permissions: ['contracts.view'] },
+        },
+        {
+          path: 'contrats/:id(\\d+)',
+          name: 'contract',
+          component: () => import('@/views/ContractDetailView.vue'),
+          props: true,
+          meta: { title: 'Contrat', permissions: ['contracts.view'] },
+        },
+        {
           path: 'journaux',
           name: 'journals',
           component: () => import('@/views/JournalsView.vue'),

@@ -24,6 +24,8 @@ export function notificationTarget(n: AppNotification): RouteLocationRaw | null 
     const name = SUBJECT_ROUTES[n.subject_type]
     return name ? { name, params: { id: n.subject_id }, query: { onglet: 'commentaires' } } : null
   }
+  if (n.kind === 'contract.due') return { name: 'contracts', query: { filtre: 'due' } }
+  if (n.contract_id) return { name: 'contract', params: { id: n.contract_id } }
   if (n.client_request_id) return { name: 'client-requests', query: { demande: n.client_request_id } }
   if (n.tech_access_request_id && n.kind === 'access_request.created') return { name: 'tech-space', query: { onglet: 'demandes' } }
   if (n.tech_share_id || n.tech_access_request_id) return { name: 'tech-space', query: { onglet: n.tech_share_id ? 'infos' : 'demandes' } }

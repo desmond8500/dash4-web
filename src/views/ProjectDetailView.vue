@@ -22,6 +22,7 @@ import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
 import SitePanel from '@/components/site/SitePanel.vue'
+import BadgesPanel from '@/components/badges/BadgesPanel.vue'
 import ReceptionReportsPanel from '@/components/site/ReceptionReportsPanel.vue'
 import TaskTable from '@/components/tasks/TaskTable.vue'
 import JournalTable from '@/components/journals/JournalTable.vue'
@@ -76,6 +77,7 @@ async function loadTasks(): Promise<void> {
 }
 watch(() => props.id, loadTasks, { immediate: true })
 
+const badgesCount = ref(0)
 const canSeeSite = computed(() => auth.canAny(['sites.view', 'sites.view.own']))
 const site = ref<Site | null>(null)
 const canSeeJournals = computed(() => auth.canAny(['journals.view', 'journals.view.own']))
@@ -251,6 +253,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           <Tab v-if="canSeeTasks" value="tasks">Tâches <Badge v-if="tasks.length" :value="tasks.length" severity="secondary" /></Tab>
           <Tab v-if="canSeeSite" value="site">Chantier <Badge v-if="site" :value="`${site.progress} %`" severity="secondary" /></Tab>
           <Tab v-if="canSeeSite" value="reception">PV de réception <Badge v-if="site?.reception_reports_count" :value="site.reception_reports_count" severity="secondary" /></Tab>
+          <Tab v-if="auth.can('badges.view')" value="badges">Badges <Badge v-if="badgesCount" :value="badgesCount" severity="secondary" /></Tab>
           <Tab v-if="canSeeJournals" value="journals">Journaux <Badge v-if="journals.length" :value="journals.length" severity="secondary" /></Tab>
         </TabList>
         <TabPanels>
@@ -285,6 +288,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           </TabPanel>
           <TabPanel v-if="canSeeSite" value="site"><SitePanel :project-id="project.id" @loaded="site = $event" /></TabPanel>
           <TabPanel v-if="canSeeSite" value="reception"><ReceptionReportsPanel :project-id="project.id" :site="site" /></TabPanel>
+          <TabPanel v-if="auth.can('badges.view')" value="badges"><BadgesPanel :project-id="project.id" :client-id="project.client_id" @count="badgesCount = $event" /></TabPanel>
           <TabPanel v-if="canSeeJournals" value="journals">
             <div class="tab-actions">
               <Button v-if="auth.can('journals.create')" label="Nouveau journal" icon="pi pi-plus" size="small" @click="journalDialog = true" />

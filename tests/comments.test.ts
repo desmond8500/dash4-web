@@ -17,3 +17,10 @@ describe('notifications', () => {
     expect(notificationTarget(n({ kind: 'autre' }))).toBeNull()
   })
 })
+
+describe('notifications des contrats', () => {
+  it('ouvre le contrat ou la liste à facturer', () => {
+    expect(notificationTarget(n({ kind: 'contract.ending', contract_id: 4 }))).toEqual({ name: 'contract', params: { id: 4 } })
+    expect(notificationTarget(n({ kind: 'contract.due' }))).toEqual({ name: 'contracts', query: { filtre: 'due' } })
+  })
+})
