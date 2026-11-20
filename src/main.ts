@@ -10,6 +10,10 @@ import './style.css'
 import App from './App.vue'
 import { router } from './router'
 import { primeVueFr } from './locale-fr'
+import { applyTheme, storedTheme } from '@/utils/theme'
+
+// Thème mémorisé, avant même la connexion (évite un éclair blanc)
+applyTheme(storedTheme())
 
 const app = createApp(App)
 

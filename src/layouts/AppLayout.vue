@@ -9,6 +9,8 @@ import { useAuthStore } from '@/stores/auth'
 import { visibleMenu, type MenuEntry } from '@/menu'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useMessagingStore } from '@/stores/messaging'
+import { api } from '@/services/api'
+import { applyTheme, storedTheme, toggledTheme } from '@/utils/theme'
 import { useToast } from 'primevue/usetoast'
 import NotificationBell from '@/components/NotificationBell.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
@@ -40,7 +42,6 @@ onUnmounted(() => {
 
 const mobileMenuOpen = ref(false)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)
-const dark = ref(document.documentElement.classList.contains('app-dark'))
 
 const entries = computed(() => visibleMenu(auth.canAny))
 const initials = computed(() =>
@@ -54,10 +55,12 @@ const userMenuItems = [
   { label: 'Se déconnecter', icon: 'pi pi-sign-out', command: () => logout() },
 ]
 
+/** Bascule clair / sombre, enregistrée dans les préférences du compte. */
 function toggleDark(): void {
-  dark.value = !dark.value
-  document.documentElement.classList.toggle('app-dark', dark.value)
-  localStorage.setItem('dash4.dark', dark.value ? '1' : '0')
+  const theme = toggledTheme(auth.user?.preferences?.theme ?? storedTheme())
+  applyTheme(theme)
+  if (auth.user?.preferences) auth.user.preferences.theme = theme
+  void api.profile.update({ preferences: { theme } }).catch(() => undefined)
 }
 
 async function logout(): Promise<void> {
@@ -66,7 +69,6 @@ async function logout(): Promise<void> {
   await router.push({ name: 'login' })
 }
 
-if (localStorage.getItem('dash4.dark') === '1' && !dark.value) toggleDark()
 
 // Raccourci « N » : noter une demande, sauf pendant une saisie
 function onKey(event: KeyboardEvent): void {
