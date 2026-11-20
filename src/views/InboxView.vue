@@ -63,6 +63,9 @@ async function fetchNow(): Promise<void> {
   try {
     const r = await api.inbox.fetch()
     toast.add({ severity: 'success', summary: r.imported ? `${r.imported} nouvel(s) e-mail(s)` : 'Aucun nouvel e-mail', life: 3000 })
+    if (r.failed) {
+      toast.add({ severity: 'warn', summary: `${r.failed} e-mail(s) illisible(s)`, detail: 'Laissé(s) non lu(s) dans la boîte mail : ouvrez-le(s) dans votre messagerie.', life: 8000 })
+    }
     void load()
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Relevé impossible', detail: errorDetail(e), life: 6000 })
