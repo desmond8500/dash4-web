@@ -30,5 +30,7 @@ export function notificationTarget(n: AppNotification): RouteLocationRaw | null 
   if (n.tech_access_request_id && n.kind === 'access_request.created') return { name: 'tech-space', query: { onglet: 'demandes' } }
   if (n.tech_share_id || n.tech_access_request_id) return { name: 'tech-space', query: { onglet: n.tech_share_id ? 'infos' : 'demandes' } }
   if (n.task_id) return { name: 'task', params: { id: n.task_id } }
+  if (n.invoice_id) return { name: 'invoice', params: { id: n.invoice_id } }
+  if (n.kind === 'backup.failed') return { name: 'backups' }
   return null
 }

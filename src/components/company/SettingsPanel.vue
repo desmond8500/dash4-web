@@ -4,6 +4,7 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
+import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
@@ -23,6 +24,14 @@ const form = reactive({
   brs_rate: 5,
   default_tax: 'vat' as TaxMode,
   numbering: {} as Record<DocumentType, string>,
+  reminders: { auto: false, days: [7, 15, 30] as number[] },
+})
+// Paliers de relance saisis « 7, 15, 30 »
+const reminderDays = computed({
+  get: () => form.reminders.days.join(', '),
+  set: (v: string) => {
+    form.reminders.days = [...new Set(v.split(/[,; ]+/).map((d) => Number.parseInt(d, 10)).filter((d) => d > 0 && d <= 365))].sort((a, b) => a - b).slice(0, 5)
+  },
 })
 const previews = ref<Partial<Record<DocumentType, string>>>({})
 const errors = ref<Record<string, string[]>>({})
@@ -53,6 +62,7 @@ function fill(s: AppSettings): void {
     brs_rate: s.brs_rate,
     default_tax: s.default_tax,
     numbering: { ...s.numbering },
+    reminders: { ...(s.reminders ?? { auto: false, days: [7, 15, 30] }) },
   })
   previews.value = { ...s.next_numbers }
 }
@@ -90,7 +100,7 @@ async function save(): Promise<void> {
   saving.value = true
   errors.value = {}
   try {
-    fill(await api.settings.update({ ...form, numbering: { ...form.numbering } }))
+    fill(await api.settings.update({ ...form, numbering: { ...form.numbering }, reminders: { ...form.reminders, days: [...form.reminders.days] } }))
     toast.add({ severity: 'success', summary: 'Paramètres enregistrés', life: 2500 })
   } catch (e) {
     if (e instanceof ApiError) errors.value = e.errors
@@ -146,6 +156,18 @@ async function save(): Promise<void> {
       </div>
     </div>
 
+    <div class="form-field form-field--full">
+      <h3>Relances de paiement</h3>
+      <p class="muted small">
+        Chaque matin, une facture impayée qui atteint un palier (en jours après son échéance) est signalée à ceux qui
+        émettent les factures. Avec l'envoi automatique, la relance part aussi au client (première adresse de sa fiche),
+        au nom de la personne qui a émis la facture, avec la facture en PDF.
+      </p>
+      <div class="reminders">
+        <label>Paliers (jours) <InputText v-model.lazy="reminderDays" :disabled="!canEdit" placeholder="7, 15, 30" /></label>
+        <label class="inline"><ToggleSwitch v-model="form.reminders.auto" :disabled="!canEdit" /> Envoyer les relances au client automatiquement</label>
+      </div>
+    </div>
     <Message v-if="!canEdit" class="form-field--full" severity="info" :closable="false">
       Lecture seule : seul l'administrateur modifie les paramètres.
     </Message>
@@ -156,6 +178,23 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.reminders {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.reminders label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.reminders label.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .example {
   border-collapse: collapse;
   max-width: 560px;

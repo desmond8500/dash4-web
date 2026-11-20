@@ -93,6 +93,12 @@ export const router = createRouter({
           meta: { title: 'Devis', permissions: ['quotes.view', 'quotes.view.own'] },
         },
         {
+          path: 'echeancier',
+          name: 'schedule',
+          component: () => import('@/views/ScheduleView.vue'),
+          meta: { title: 'Échéancier', permissions: ['invoices.view'] },
+        },
+        {
           path: 'factures',
           name: 'invoices',
           component: () => import('@/views/InvoicesView.vue'),
