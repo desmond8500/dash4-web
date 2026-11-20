@@ -59,6 +59,7 @@ async function submit(): Promise<void> {
       </div>
 
       <Button type="submit" label="Se connecter" icon="pi pi-sign-in" :loading="loading" fluid />
+
     </form>
   </div>
 </template>
