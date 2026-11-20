@@ -48,3 +48,11 @@ describe('menu', () => {
     expect(labels).toEqual(['Tableau de bord', 'Messages'])
   })
 })
+
+describe('mot de passe oublié', () => {
+  it('reste accessible sans être connecté, techniciens compris', () => {
+    const to = { name: 'password-reset', meta: { public: true }, fullPath: '/mot-de-passe/nouveau?token=x' } as unknown as RouteLocationNormalized
+    expect(resolveNavigation(to, state())).toBe(true)
+    expect(resolveNavigation(to, state({ isAuthenticated: true, isTechnician: true }))).toBe(true)
+  })
+})

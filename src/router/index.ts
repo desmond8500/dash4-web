@@ -14,6 +14,18 @@ export const router = createRouter({
       meta: { public: true, title: 'Connexion' },
     },
     {
+      path: '/mot-de-passe',
+      name: 'password-forgot',
+      component: () => import('@/views/PasswordResetView.vue'),
+      meta: { public: true, title: 'Mot de passe oublié' },
+    },
+    {
+      path: '/mot-de-passe/nouveau',
+      name: 'password-reset',
+      component: () => import('@/views/PasswordResetView.vue'),
+      meta: { public: true, title: 'Nouveau mot de passe' },
+    },
+    {
       path: '/technicien',
       name: 'technician',
       component: () => import('@/views/TechnicianView.vue'),
