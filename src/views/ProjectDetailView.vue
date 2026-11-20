@@ -40,6 +40,14 @@ const toast = useToast()
 const confirm = useConfirm()
 const router = useRouter()
 
+/** Résumé du projet en PDF (montants seulement pour qui voit les prix). */
+async function openSummary(): Promise<void> {
+  if (!project.value) return
+  const url = URL.createObjectURL(await api.projects.summaryPdf(project.value.id))
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 const project = ref<Project | null>(null)
 const commentsCount = ref(0)
 const loading = ref(true)
@@ -209,6 +217,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
             @click="toggleFavorite"
           />
           <Button label="Discussion" icon="pi pi-comments" severity="secondary" text @click="router.push({ name: 'messages', query: { project: project.id } })" />
+          <Button label="Résumé PDF" icon="pi pi-file-pdf" severity="secondary" text @click="openSummary" />
           <Button v-if="canUpdate" label="Modifier" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
           <Button v-if="canDelete" label="Supprimer" icon="pi pi-trash" severity="danger" outlined @click="remove" />
         </div>

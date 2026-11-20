@@ -172,6 +172,7 @@ function remove(): void {
       <TabList>
         <Tab value="lines">Prestations</Tab>
         <Tab v-if="contract!.invoices" value="invoices">Factures ({{ contract!.invoices.length }})</Tab>
+        <Tab v-if="contract!.visits_per_year" value="visits">Visites ({{ contract!.visits?.length ?? 0 }})</Tab>
         <Tab value="terms">Description et conditions</Tab>
         <Tab value="documents">Documents</Tab>
         <Tab value="comments">Commentaires</Tab>
@@ -199,6 +200,24 @@ function remove(): void {
             </tfoot>
           </table>
           <Button v-if="editable" label="Ajouter une prestation" icon="pi pi-plus" text size="small" @click="lines.push({ flat_rate_id: null, designation: '', unit: null, quantity: 1, unit_price: 0 })" />
+        </TabPanel>
+        <TabPanel v-if="contract!.visits_per_year" value="visits">
+          <p class="muted">
+            {{ contract!.visits_per_year }} visite(s) par an, réparties à partir du début du contrat. Chaque visite est ajoutée
+            au planning un mois avant, sous forme de tâche à affecter.
+          </p>
+          <table v-if="contract!.visits?.length" class="list">
+            <thead><tr><th>Visite</th><th>Prévue le</th><th>Tâche</th><th>État</th></tr></thead>
+            <tbody>
+              <tr v-for="v in contract!.visits" :key="v.id">
+                <td>{{ v.number }}/{{ contract!.visits_per_year }}</td>
+                <td>{{ formatDate(v.planned_on) }}</td>
+                <td><RouterLink v-if="v.task" :to="{ name: 'task', params: { id: v.task.id } }">{{ v.task.title }}</RouterLink><span v-else class="muted">tâche supprimée</span></td>
+                <td>{{ v.task?.status.label ?? '' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="muted">Aucune visite planifiée pour le moment.</p>
         </TabPanel>
         <TabPanel v-if="contract!.invoices" value="invoices">
           <table v-if="contract!.invoices.length" class="list">
