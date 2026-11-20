@@ -259,6 +259,12 @@ export const router = createRouter({
           meta: { title: 'Utilisateurs', permissions: ['users.view'] },
         },
         {
+          path: 'sauvegardes',
+          name: 'backups',
+          component: () => import('@/views/BackupsView.vue'),
+          meta: { title: 'Sauvegardes', permissions: ['backups.manage'] },
+        },
+        {
           path: 'entreprise',
           name: 'company',
           component: () => import('@/views/CompanyView.vue'),

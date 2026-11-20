@@ -48,6 +48,7 @@ export const MENU: MenuEntry[] = [
     to: '/entreprise',
     permissions: ['company.view', 'bank.view', 'signature.manage', 'settings.view'],
   },
+  { label: 'Sauvegardes', icon: 'pi pi-database', to: '/sauvegardes', permissions: ['backups.manage'] },
 ]
 
 export function visibleMenu(canAny: (permissions: string[]) => boolean): MenuEntry[] {
