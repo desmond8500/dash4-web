@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -235,8 +235,8 @@ function remove(): void {
         </TabPanel>
         <TabPanel value="terms">
           <div class="form-grid">
-            <div class="form-field form-field--full"><label for="c-desc">Description des prestations</label><Textarea id="c-desc" v-model="form.description" rows="4" auto-resize :disabled="!editable" /></div>
-            <div class="form-field form-field--full"><label for="c-terms">Conditions particulières</label><Textarea id="c-terms" v-model="form.terms" rows="6" auto-resize :disabled="!editable" /></div>
+            <div class="form-field form-field--full"><label for="c-desc">Description des prestations</label><MarkdownEditor id="c-desc" v-model="form.description" rows="4" auto-resize :disabled="!editable" /></div>
+            <div class="form-field form-field--full"><label for="c-terms">Conditions particulières</label><MarkdownEditor id="c-terms" v-model="form.terms" rows="6" auto-resize :disabled="!editable" /></div>
           </div>
         </TabPanel>
         <TabPanel value="documents"><AttachmentsPanel kind="documents" type="contracts" :id="contract!.id" :can-add="editable" :can-manage="!!contract!.can.delete" /></TabPanel>

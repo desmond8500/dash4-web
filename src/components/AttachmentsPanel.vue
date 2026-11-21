@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
 import { useToast } from 'primevue/usetoast'
@@ -206,7 +207,7 @@ const removeDocument = (doc: Document) =>
     <!-- Notes -->
     <template v-if="props.kind === 'notes'">
       <form v-if="props.canAdd" class="add" @submit.prevent="addNote">
-        <Textarea
+        <MarkdownEditor
           v-model="noteForm.body"
           rows="2"
           auto-resize
@@ -233,13 +234,13 @@ const removeDocument = (doc: Document) =>
           </span>
         </header>
         <template v-if="editingNote === note.id">
-          <Textarea v-model="editingBody" rows="3" auto-resize class="full" />
+          <MarkdownEditor v-model="editingBody" rows="3" auto-resize class="full" />
           <div class="add-actions end">
             <Button label="Annuler" text size="small" severity="secondary" @click="editingNote = null" />
             <Button label="Enregistrer" size="small" :loading="busy" @click="saveEdit(note)" />
           </div>
         </template>
-        <p v-else class="body">{{ note.body }}</p>
+        <MarkdownView v-else class="body" :text="note.body" />
       </article>
     </template>
 
@@ -376,7 +377,6 @@ const removeDocument = (doc: Document) =>
 
 .body {
   margin: 0.375rem 0 0;
-  white-space: pre-line;
 }
 
 .line {

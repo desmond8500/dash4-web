@@ -7,6 +7,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -352,7 +353,7 @@ function removePayment(paymentId: number): void {
                 </div>
                 <div class="form-field form-field--full">
                   <label for="i-intro">Introduction</label>
-                  <Textarea id="i-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
+                  <MarkdownEditor id="i-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
                 </div>
               </div>
 
@@ -536,11 +537,11 @@ function removePayment(paymentId: number): void {
                 </label>
                 <div class="form-field">
                   <label for="i-terms">Modalités de paiement</label>
-                  <Textarea id="i-terms" v-model="header.payment_terms" rows="3" auto-resize :disabled="!editable" @change="saveHeader('payment_terms')" />
+                  <MarkdownEditor id="i-terms" v-model="header.payment_terms" rows="3" auto-resize :disabled="!editable" @change="saveHeader('payment_terms')" />
                 </div>
                 <div class="form-field">
                   <label for="i-notes">Notes internes</label>
-                  <Textarea id="i-notes" v-model="header.notes" rows="3" auto-resize :disabled="!invoice.can.update" @change="saveHeader('notes')" />
+                  <MarkdownEditor id="i-notes" v-model="header.notes" rows="3" auto-resize :disabled="!invoice.can.update" @change="saveHeader('notes')" />
                   <small class="muted">Jamais imprimées ; modifiables après l'émission.</small>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Message from 'primevue/message'
@@ -156,7 +156,7 @@ function remove(s: Sheet): void {
           </table>
           <Button label="Ajouter une zone" icon="pi pi-plus" text size="small" @click="form.zones.push(blankZone(form.zones.length + 1))" />
         </div>
-        <div class="form-field form-field--full"><label for="sh-notes">Notes</label><Textarea id="sh-notes" v-model="form.notes" rows="2" auto-resize /></div>
+        <div class="form-field form-field--full"><label for="sh-notes">Notes</label><MarkdownEditor id="sh-notes" v-model="form.notes" rows="2" auto-resize /></div>
       </form>
       <template #footer>
         <Button v-if="current" label="PDF" icon="pi pi-file-pdf" text severity="secondary" @click="pdf(current!)" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { markdownToText } from '@dash4/shared'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Button from 'primevue/button'
@@ -183,7 +184,7 @@ function removeRequest(r: TechAccessRequest): void {
             <Column header="Statut">
               <template #body="{ data }">
                 <Tag :value="data.status.label" :severity="statusSeverity(data.status.value)" />
-                <div v-if="data.decider" class="muted small">{{ data.decider.full_name }}<template v-if="data.response"> : {{ data.response }}</template></div>
+                <div v-if="data.decider" class="muted small">{{ data.decider.full_name }}<template v-if="data.response"> : {{ markdownToText(data.response) }}</template></div>
               </template>
             </Column>
             <Column header="" class="actions-col">

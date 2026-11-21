@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { markdownToText } from '@dash4/shared'
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -184,11 +186,11 @@ const total = computed(() =>
         </div>
       </template>
       <template #content>
-        <p v-if="system.description" class="muted">{{ system.description }}</p>
+        <MarkdownView class="muted" :text="system.description" />
         <table v-if="system.templates.length" class="list">
           <tbody>
             <tr v-for="t in system.templates" :key="t.id">
-              <td><strong>{{ t.name }}</strong><div v-if="t.description" class="muted small">{{ t.description }}</div></td>
+              <td><strong>{{ t.name }}</strong><div v-if="t.description" class="muted small">{{ markdownToText(t.description) }}</div></td>
               <td class="muted">{{ t.lines_count }} ligne(s)</td>
               <td class="actions">
                 <Button :icon="canManage ? 'pi pi-pencil' : 'pi pi-eye'" size="small" text rounded :aria-label="canManage ? 'Modifier' : 'Voir'" @click="openTemplate(t.id)" />
@@ -229,7 +231,7 @@ const total = computed(() =>
         </div>
         <div class="form-field form-field--full">
           <label for="sys-desc">Description</label>
-          <Textarea id="sys-desc" v-model="systemForm.description" rows="2" auto-resize />
+          <MarkdownEditor id="sys-desc" v-model="systemForm.description" rows="2" auto-resize />
         </div>
       </div>
       <template #footer>

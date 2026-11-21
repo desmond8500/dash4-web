@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -140,7 +140,7 @@ async function send(): Promise<void> {
       </div>
       <div class="form-field form-field--full">
         <label for="e-message">Message</label>
-        <Textarea id="e-message" v-model="message" rows="8" auto-resize />
+        <MarkdownEditor id="e-message" v-model="message" rows="8" auto-resize />
       </div>
       <div class="form-field form-field--full">
         <label for="e-signature">Signature</label>

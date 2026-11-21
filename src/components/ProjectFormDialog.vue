@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
@@ -269,7 +269,7 @@ async function save(): Promise<void> {
 
       <div class="form-field form-field--full">
         <label for="project-description">Résumé</label>
-        <Textarea id="project-description" v-model="form.description" rows="4" auto-resize />
+        <MarkdownEditor id="project-description" v-model="form.description" rows="4" auto-resize />
       </div>
 
       <div class="form-field form-field--full switch">

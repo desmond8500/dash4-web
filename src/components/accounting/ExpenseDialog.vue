@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
@@ -224,7 +224,7 @@ async function openReceipt(): Promise<void> {
       </label>
       <div class="form-field form-field--full">
         <label for="x-desc">Détails</label>
-        <Textarea id="x-desc" v-model="form.description" rows="2" auto-resize :disabled="!editable" />
+        <MarkdownEditor id="x-desc" v-model="form.description" rows="2" auto-resize :disabled="!editable" />
       </div>
       <div class="form-field form-field--full">
         <label>Justificatif</label>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -245,7 +246,7 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
             </div>
             <div v-if="project.description" class="full">
               <dt>Résumé</dt>
-              <dd class="pre">{{ project.description }}</dd>
+              <dd><MarkdownView :text="project.description" /></dd>
             </div>
           </dl>
         </template>

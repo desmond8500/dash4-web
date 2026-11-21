@@ -3,7 +3,7 @@ import RequestLinks from '@/components/requests/RequestLinks.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import InputText from 'primevue/inputtext'
 import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import SelectButton from 'primevue/selectbutton'
@@ -235,7 +235,7 @@ async function save(): Promise<void> {
 
       <div class="form-field form-field--full">
         <label for="request-body">Demande</label>
-        <Textarea
+        <MarkdownEditor
           id="request-body"
           v-model="form.body"
           rows="3"

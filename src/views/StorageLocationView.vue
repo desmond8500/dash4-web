@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
@@ -75,7 +75,7 @@ async function remove(): Promise<void> {
           <div class="form-grid">
             <div class="form-field"><label for="l-name">Nom</label><InputText id="l-name" v-model="form.name" :disabled="!location.can.update" @change="form.name.trim() && save({ name: form.name.trim() })" /></div>
             <div class="form-field"><label for="l-code">Code</label><InputText id="l-code" v-model="form.code" :disabled="!location.can.update" @change="save({ code: form.code.trim() || null })" /></div>
-            <div class="form-field form-field--full"><label for="l-desc">Description</label><Textarea id="l-desc" v-model="form.description" rows="2" auto-resize :disabled="!location.can.update" @change="save({ description: form.description.trim() || null })" /></div>
+            <div class="form-field form-field--full"><label for="l-desc">Description</label><MarkdownEditor id="l-desc" v-model="form.description" rows="2" auto-resize :disabled="!location.can.update" @change="save({ description: form.description.trim() || null })" /></div>
             <label v-if="location.can.update" class="switch"><ToggleSwitch :model-value="location.is_active" @update:model-value="(v: boolean) => save({ is_active: v })" /> Emplacement actif</label>
           </div>
           <p class="muted">{{ location.articles_count }} article(s) · {{ formatQty(location.units) }} pièce(s) rangée(s)</p>

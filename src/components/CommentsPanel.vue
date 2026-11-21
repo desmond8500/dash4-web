@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import Button from 'primevue/button'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { ApiError, filterMentionable, insertMention, mentionedIds, mentionQuery, splitMentions } from '@dash4/shared'
+import { ApiError, filterMentionable, insertMention, mentionedIds, mentionQuery } from '@dash4/shared'
 import type { Comment, CommentableType, Document, Mentionable } from '@dash4/shared'
 import { api } from '@/services/api'
 import { formatDateTime } from '@/utils/clientRequests'
@@ -26,7 +27,7 @@ const sending = ref(false)
 const text = ref('')
 const files = ref<File[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
-const editor = ref<{ $el: HTMLTextAreaElement } | null>(null)
+const editor = ref<{ $el: HTMLElement } | null>(null)
 const editingId = ref<number | null>(null)
 const editText = ref('')
 const urls = ref<Record<number, string>>({})
@@ -44,7 +45,7 @@ const allPeople = computed(() => {
   for (const c of comments.value) for (const m of c.mentions ?? []) map.set(m.id, m)
   return [...map.values()]
 })
-const parts = (c: Comment) => splitMentions(c.body, c.mentions ?? [])
+const mentionNames = (c: Comment) => (c.mentions ?? []).map((p) => p.full_name)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -74,7 +75,7 @@ async function openFile(d: Document, all: Document[]): Promise<void> {
 }
 
 function textarea(): HTMLTextAreaElement | null {
-  return editor.value?.$el ?? null
+  return editor.value?.$el.querySelector('textarea') ?? null
 }
 function onInput(): void {
   const el = textarea()
@@ -194,13 +195,13 @@ function remove(c: Comment): void {
         <Button v-if="c.can.delete" icon="pi pi-trash" text rounded size="small" severity="secondary" aria-label="Supprimer" @click="remove(c)" />
       </header>
       <div v-if="editingId === c.id" class="edit">
-        <Textarea v-model="editText" rows="2" auto-resize fluid />
+        <MarkdownEditor v-model="editText" rows="2" auto-resize fluid />
         <div class="row">
           <Button label="Annuler" size="small" text severity="secondary" @click="editingId = null" />
           <Button label="Enregistrer" size="small" @click="saveEdit(c)" />
         </div>
       </div>
-      <p v-else class="body"><template v-for="(p, i) in parts(c)" :key="i"><span v-if="p.mention" class="mention">{{ p.text }}</span><template v-else>{{ p.text }}</template></template></p>
+      <MarkdownView v-else class="body" :text="c.body" :mentions="mentionNames(c)" />
       <div v-if="c.files?.length" class="files">
         <button v-for="d in c.files" :key="d.id" type="button" class="file" :title="d.name" @click="openFile(d, c.files ?? [])">
           <img v-if="urls[d.id]" :src="urls[d.id]" :alt="d.name" />
@@ -211,7 +212,7 @@ function remove(c: Comment): void {
 
     <div class="composer">
       <div class="input-wrap">
-        <Textarea ref="editor" v-model="text" rows="2" auto-resize fluid placeholder="Écrire un commentaire… (@ pour mentionner, Ctrl+Entrée pour envoyer)" @input="onInput" @click="onInput" @keydown="onKeydown" @blur="onBlur" />
+        <MarkdownEditor ref="editor" v-model="text" rows="2" auto-resize fluid placeholder="Écrire un commentaire… (@ pour mentionner, Ctrl+Entrée pour envoyer)" @input="onInput" @click="onInput" @keydown="onKeydown" @blur="onBlur" />
         <ul v-if="suggestions.length" class="suggestions" role="listbox">
           <li v-for="(p, i) in suggestions" :key="p.id" :class="{ active: i === highlighted }" role="option" @mousedown.prevent="pick(p)">
             {{ p.full_name }}<small v-if="p.job_title" class="muted"> · {{ p.job_title }}</small>
@@ -251,7 +252,6 @@ function remove(c: Comment): void {
 
 .body {
   margin: 0.25rem 0 0;
-  white-space: pre-wrap;
 }
 
 .mention {

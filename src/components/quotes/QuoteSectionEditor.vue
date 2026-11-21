@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
@@ -336,7 +337,7 @@ const money = (v: number) => formatMoney(v, props.currency)
       </button>
       <template v-else>
         <label class="muted small" :for="`proposal-${props.section.id}`">Proposition technique</label>
-        <Textarea
+        <MarkdownEditor
           :id="`proposal-${props.section.id}`"
           v-model="proposal"
           rows="2"

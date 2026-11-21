@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
@@ -365,7 +366,7 @@ function contactEmails(contact: Contact): string[] {
             </div>
             <div v-if="client.description" class="full">
               <dt>Notes</dt>
-              <dd class="notes">{{ client.description }}</dd>
+              <dd><MarkdownView :text="client.description" /></dd>
             </div>
           </dl>
         </template>

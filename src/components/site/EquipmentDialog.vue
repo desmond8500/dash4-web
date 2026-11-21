@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
@@ -116,7 +116,7 @@ async function save(): Promise<void> {
         </div>
         <Button label="Ajouter une caractéristique" icon="pi pi-plus" text size="small" @click="addCharacteristic" />
       </div>
-      <div class="form-field form-field--full"><label for="eq-desc">Description</label><Textarea id="eq-desc" v-model="form.description" rows="2" auto-resize /></div>
+      <div class="form-field form-field--full"><label for="eq-desc">Description</label><MarkdownEditor id="eq-desc" v-model="form.description" rows="2" auto-resize /></div>
     </form>
     <template #footer>
       <Button label="Annuler" severity="secondary" text @click="visible = false" />
