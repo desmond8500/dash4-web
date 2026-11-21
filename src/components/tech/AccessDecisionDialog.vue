@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Textarea from 'primevue/textarea'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
@@ -66,7 +67,7 @@ async function save(): Promise<void> {
       </p>
       <div class="form-field form-field--full">
         <label for="ad-response">{{ props.decision === 'approved' ? 'Message (facultatif)' : 'Raison du refus' }}</label>
-        <Textarea id="ad-response" v-model="response" rows="2" auto-resize />
+        <MarkdownEditor id="ad-response" v-model="response" rows="2" auto-resize />
       </div>
       <template v-if="props.decision === 'approved'">
         <div class="form-field form-field--full"><label class="switch"><ToggleSwitch v-model="withShare" /> Envoyer l'information au technicien</label></div>

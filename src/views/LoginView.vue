@@ -59,6 +59,7 @@ async function submit(): Promise<void> {
       </div>
 
       <Button type="submit" label="Se connecter" icon="pi pi-sign-in" :loading="loading" fluid />
+      <RouterLink :to="{ name: 'password-forgot', query: form.email ? { email: form.email } : {} }" class="forgot">Mot de passe oublié ?</RouterLink>
 
     </form>
   </div>
@@ -91,5 +92,10 @@ h1 {
 
 p {
   margin: 0;
+}
+
+.forgot {
+  text-align: center;
+  font-size: 0.9rem;
 }
 </style>

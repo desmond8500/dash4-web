@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
@@ -209,7 +209,7 @@ const parties: Array<{ key: ReceptionParty; label: string }> = [
           </div>
           <Button label="Ajouter une réserve" icon="pi pi-plus" text size="small" @click="form.reserves.push({ text: '', lifted: null })" />
         </div>
-        <div class="form-field form-field--full"><label for="pv-obs">Observations</label><Textarea id="pv-obs" v-model="form.observations" rows="3" auto-resize /></div>
+        <div class="form-field form-field--full"><label for="pv-obs">Observations</label><MarkdownEditor id="pv-obs" v-model="form.observations" rows="3" auto-resize /></div>
       </form>
       <template v-if="current">
         <h4>Copie signée et documents</h4>

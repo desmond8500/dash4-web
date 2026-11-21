@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -185,7 +185,7 @@ async function save(): Promise<void> {
 
       <div class="form-field form-field--full">
         <label for="contact-notes">Notes</label>
-        <Textarea id="contact-notes" v-model="form.notes" rows="3" auto-resize />
+        <MarkdownEditor id="contact-notes" v-model="form.notes" rows="3" auto-resize />
       </div>
     </form>
 

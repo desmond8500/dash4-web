@@ -58,3 +58,13 @@ export function invoicePreview(quote: Quote, scope: InvoiceScope, percent: numbe
 export function canReceivePayment(invoice: Pick<Invoice, 'status' | 'can'>): boolean {
   return invoice.can.update && (invoice.status.value === 'issued' || invoice.status.value === 'partially_paid')
 }
+
+/** Relance possible : facture émise, pas encore soldée, et l'on peut la modifier. */
+export function canRemind(invoice: Pick<Invoice, 'status' | 'remaining_amount' | 'can' | 'number'>): boolean {
+  return !!invoice.number && invoice.can.update && ['issued', 'partially_paid'].includes(invoice.status.value) && invoice.remaining_amount > 0
+}
+
+/** Avoir possible : facture émise (même payée), pas encore entièrement annulée, et droit d'émettre. */
+export function canCredit(invoice: Pick<Invoice, 'status' | 'creditable_amount' | 'can'>): boolean {
+  return invoice.can.issue && ['issued', 'partially_paid', 'paid'].includes(invoice.status.value) && (invoice.creditable_amount ?? 0) > 0
+}

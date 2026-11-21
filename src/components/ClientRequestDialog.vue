@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import RequestLinks from '@/components/requests/RequestLinks.vue'
+import CommentsPanel from '@/components/CommentsPanel.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import InputText from 'primevue/inputtext'
 import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import SelectButton from 'primevue/selectbutton'
@@ -234,7 +235,7 @@ async function save(): Promise<void> {
 
       <div class="form-field form-field--full">
         <label for="request-body">Demande</label>
-        <Textarea
+        <MarkdownEditor
           id="request-body"
           v-model="form.body"
           rows="3"
@@ -356,6 +357,11 @@ async function save(): Promise<void> {
         </template>
       </template>
 
+      <div v-if="props.request" class="form-field form-field--full comments">
+        <h3>Commentaires</h3>
+        <CommentsPanel type="client-requests" :id="props.request.id" />
+      </div>
+
       <p v-if="props.request" class="form-field--full muted meta">
         Notée {{ formatDateTime(props.request.created_at) }}
         <template v-if="props.request.creator"> par {{ props.request.creator.full_name }}</template>
@@ -394,6 +400,11 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.comments h3 {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
 .convert {
   margin-right: auto;
   display: flex;

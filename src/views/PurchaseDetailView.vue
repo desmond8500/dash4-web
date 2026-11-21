@@ -6,7 +6,7 @@ import Tag from 'primevue/tag'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
@@ -347,7 +347,7 @@ async function receive(): Promise<void> {
                 </div>
                 <div class="form-field">
                   <label for="pu-notes">Notes internes</label>
-                  <Textarea id="pu-notes" v-model="header.notes" rows="3" auto-resize :disabled="!purchase.can.update" @change="saveHeader('notes')" />
+                  <MarkdownEditor id="pu-notes" v-model="header.notes" rows="3" auto-resize :disabled="!purchase.can.update" @change="saveHeader('notes')" />
                 </div>
               </div>
             </template>

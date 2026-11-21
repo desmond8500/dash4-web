@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { markdownToText } from '@dash4/shared'
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -6,7 +8,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import DatePicker from 'primevue/datepicker'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
@@ -267,7 +269,7 @@ async function removeCatalog(id: number): Promise<void> {
               <template v-if="!(s.equipment ?? []).length">Aucun équipement</template>
             </p>
             <template v-else>
-              <p v-if="s.description" class="pre small">{{ s.description }}</p>
+              <MarkdownView class="small" :text="s.description" />
               <table v-if="(s.equipment ?? []).length" class="list equipment">
                 <thead><tr><th>Équipement</th><th>Qté</th><th>Emplacement</th><th>Caractéristiques</th><th>État</th><th /></tr></thead>
                 <tbody>
@@ -297,7 +299,7 @@ async function removeCatalog(id: number): Promise<void> {
                 <Button v-if="can.manage" label="Ajouter un équipement" icon="pi pi-plus" text size="small" @click="openEquipment(s)" />
                 <span class="grow" />
                 <span v-if="s.progress_entries?.length" class="muted small">
-                  Dernier relevé : {{ formatDate(s.progress_entries?.[0]?.date ?? null) }}<template v-if="s.progress_entries?.[0]?.note"> — {{ s.progress_entries?.[0]?.note }}</template>
+                  Dernier relevé : {{ formatDate(s.progress_entries?.[0]?.date ?? null) }}<template v-if="s.progress_entries?.[0]?.note"> — {{ markdownToText(s.progress_entries?.[0]?.note) }}</template>
                 </span>
               </div>
             </template>
@@ -310,7 +312,7 @@ async function removeCatalog(id: number): Promise<void> {
     <Dialog v-model:visible="place.open" :header="place.title" modal :style="{ width: '420px' }">
       <form id="place-form" class="form-grid" @submit.prevent="savePlace">
         <div class="form-field form-field--full"><label for="pl-name">Nom</label><InputText id="pl-name" v-model="place.name" autofocus /></div>
-        <div class="form-field form-field--full"><label for="pl-desc">Description</label><Textarea id="pl-desc" v-model="place.description" rows="2" auto-resize /></div>
+        <div class="form-field form-field--full"><label for="pl-desc">Description</label><MarkdownEditor id="pl-desc" v-model="place.description" rows="2" auto-resize /></div>
       </form>
       <template #footer>
         <Button label="Annuler" text severity="secondary" @click="place.open = false" />
@@ -329,7 +331,7 @@ async function removeCatalog(id: number): Promise<void> {
           <label for="sys-building">Bâtiment</label>
           <Select id="sys-building" v-model="systemDialog.building_id" :options="[{ id: null, name: 'Tout le projet' }, ...site!.buildings]" option-label="name" option-value="id" />
         </div>
-        <div class="form-field form-field--full"><label for="sys-desc">Description</label><Textarea id="sys-desc" v-model="systemDialog.description" rows="2" auto-resize /></div>
+        <div class="form-field form-field--full"><label for="sys-desc">Description</label><MarkdownEditor id="sys-desc" v-model="systemDialog.description" rows="2" auto-resize /></div>
       </form>
       <template #footer>
         <Button label="Annuler" text severity="secondary" @click="systemDialog.open = false" />
@@ -341,12 +343,12 @@ async function removeCatalog(id: number): Promise<void> {
       <form id="progress-form" class="form-grid" @submit.prevent="saveProgress">
         <div class="form-field"><label for="pr-percent">Avancement (%)</label><InputNumber v-model="progress.percent" input-id="pr-percent" :min="0" :max="100" suffix=" %" show-buttons :step="5" /></div>
         <div class="form-field"><label for="pr-date">Date</label><DatePicker v-model="progress.date" input-id="pr-date" date-format="dd/mm/yy" :max-date="new Date()" /></div>
-        <div class="form-field form-field--full"><label for="pr-note">Note</label><Textarea id="pr-note" v-model="progress.note" rows="2" auto-resize placeholder="Câblage terminé, reste la mise en service…" /></div>
+        <div class="form-field form-field--full"><label for="pr-note">Note</label><MarkdownEditor id="pr-note" v-model="progress.note" rows="2" auto-resize placeholder="Câblage terminé, reste la mise en service…" /></div>
       </form>
       <ul v-if="progress.system?.progress_entries?.length" class="history">
         <li v-for="p in progress.system?.progress_entries ?? []" :key="p.id">
           <strong>{{ p.percent }} %</strong> <span class="muted small">{{ formatDate(p.date) }} · {{ p.creator?.full_name ?? '—' }}</span>
-          <span v-if="p.note" class="small"> — {{ p.note }}</span>
+          <span v-if="p.note" class="small"> — {{ markdownToText(p.note) }}</span>
           <Button v-if="can.manage" icon="pi pi-times" text rounded size="small" severity="secondary" aria-label="Retirer le relevé" @click="run(() => api.sites.removeProgress(p.id)).then((ok) => ok && (progress.system = site?.systems.find((x) => x.id === progress.system?.id) ?? null))" />
         </li>
       </ul>
@@ -368,7 +370,7 @@ async function removeCatalog(id: number): Promise<void> {
           <template v-if="detail.article"><dt>Article</dt><dd>{{ detail.article.designation }}<span v-if="detail.article.reference" class="muted"> · {{ detail.article.reference }}</span></dd></template>
           <template v-for="c in detail.characteristics" :key="c.label"><dt>{{ c.label }}</dt><dd class="mono">{{ c.value }}</dd></template>
         </dl>
-        <p v-if="detail.description" class="pre">{{ detail.description }}</p>
+        <MarkdownView :text="detail.description" />
         <h4>Photos et documents</h4>
         <AttachmentsPanel kind="documents" type="equipment" :id="detail.id" :can-add="can.manage" :can-manage="can.delete" />
       </template>

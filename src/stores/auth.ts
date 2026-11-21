@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { can as canFn, canAny as canAnyFn, isAdmin as isAdminFn, isTechnician as isTechnicianFn } from '@dash4/shared'
 import type { CurrentUser, LoginPayload } from '@dash4/shared'
 import { api, tokenStorage } from '@/services/api'
+import { applyTheme } from '@/utils/theme'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<CurrentUser | null>(null)
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       if (await tokenStorage.get()) {
         user.value = await api.auth.me()
+        if (user.value.preferences) applyTheme(user.value.preferences.theme)
       }
     } catch {
       user.value = null
@@ -38,6 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(payload: Omit<LoginPayload, 'device_name'>): Promise<CurrentUser> {
     const response = await api.auth.login({ ...payload, device_name: 'Web' })
     user.value = response.user
+    if (response.user.preferences) applyTheme(response.user.preferences.theme)
     ready.value = true
     return response.user
   }

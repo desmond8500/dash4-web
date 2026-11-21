@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
@@ -175,7 +175,7 @@ const fieldError = (f: string) => errors.value[f]?.[0]
       </div>
       <div class="form-field form-field--full">
         <label for="a-description">Description</label>
-        <Textarea id="a-description" v-model="form.description" rows="2" auto-resize />
+        <MarkdownEditor id="a-description" v-model="form.description" rows="2" auto-resize />
       </div>
       <label v-if="!creating" class="form-field--full switch"><ToggleSwitch v-model="form.is_active" /> Article actif (proposé dans les devis et les achats)</label>
     </form>

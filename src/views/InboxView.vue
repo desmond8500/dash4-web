@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import SelectButton from 'primevue/selectbutton'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Dialog from 'primevue/dialog'
 import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import Tag from 'primevue/tag'
@@ -199,7 +199,7 @@ const statusOptions = computed(() => [
         </div>
         <div class="form-field form-field--full">
           <label for="c-body">Demande</label>
-          <Textarea id="c-body" v-model="convert.body" rows="8" auto-resize />
+          <MarkdownEditor id="c-body" v-model="convert.body" rows="8" auto-resize />
         </div>
         <p class="form-field--full muted small">Les pièces jointes deviennent des documents de la demande. Vous pourrez ensuite la lier à des tâches, factures ou bordereaux.</p>
       </div>

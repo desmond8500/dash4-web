@@ -14,6 +14,18 @@ export const router = createRouter({
       meta: { public: true, title: 'Connexion' },
     },
     {
+      path: '/mot-de-passe',
+      name: 'password-forgot',
+      component: () => import('@/views/PasswordResetView.vue'),
+      meta: { public: true, title: 'Mot de passe oublié' },
+    },
+    {
+      path: '/mot-de-passe/nouveau',
+      name: 'password-reset',
+      component: () => import('@/views/PasswordResetView.vue'),
+      meta: { public: true, title: 'Nouveau mot de passe' },
+    },
+    {
       path: '/technicien',
       name: 'technician',
       component: () => import('@/views/TechnicianView.vue'),
@@ -79,6 +91,12 @@ export const router = createRouter({
           component: () => import('@/views/QuoteDetailView.vue'),
           props: true,
           meta: { title: 'Devis', permissions: ['quotes.view', 'quotes.view.own'] },
+        },
+        {
+          path: 'echeancier',
+          name: 'schedule',
+          component: () => import('@/views/ScheduleView.vue'),
+          meta: { title: 'Échéancier', permissions: ['invoices.view'] },
         },
         {
           path: 'factures',
@@ -245,6 +263,18 @@ export const router = createRouter({
           name: 'users',
           component: () => import('@/views/UsersView.vue'),
           meta: { title: 'Utilisateurs', permissions: ['users.view'] },
+        },
+        {
+          path: 'exports',
+          name: 'exports',
+          component: () => import('@/views/ExportsView.vue'),
+          meta: { title: 'Exports comptables', permissions: ['exports.run'] },
+        },
+        {
+          path: 'sauvegardes',
+          name: 'backups',
+          component: () => import('@/views/BackupsView.vue'),
+          meta: { title: 'Sauvegardes', permissions: ['backups.manage'] },
         },
         {
           path: 'entreprise',

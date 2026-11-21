@@ -7,6 +7,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -28,9 +29,10 @@ import { useSettingsStore } from '@/stores/settings'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
 import InvoiceEmailDialog from '@/components/invoices/InvoiceEmailDialog.vue'
+import InvoiceReminderDialog from '@/components/invoices/InvoiceReminderDialog.vue'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
-import { canReceivePayment, invoiceStatusSeverity } from '@/utils/invoices'
+import { canCredit, canReceivePayment, canRemind, invoiceStatusSeverity } from '@/utils/invoices'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -207,6 +209,46 @@ async function openPdf(): Promise<void> {
   }
 }
 
+// Relances et avoirs
+const reminderOpen = ref(false)
+const creditOpen = ref(false)
+const credit = reactive({ amount: 0, reason: '' })
+const remindable = computed(() => !!invoice.value && canRemind(invoice.value))
+const creditable = computed(() => !!invoice.value && canCredit(invoice.value))
+
+function onReminded(i: Invoice): void {
+  setInvoice(i)
+  tab.value = 'credits'
+  toast.add({ severity: 'success', summary: 'Relance envoyée', life: 4000 })
+}
+function openCredit(): void {
+  if (!invoice.value) return
+  credit.amount = invoice.value.creditable_amount ?? invoice.value.remaining_amount
+  credit.reason = ''
+  creditOpen.value = true
+}
+async function createCredit(): Promise<void> {
+  const i = invoice.value
+  if (!i || !credit.reason.trim()) return
+  busy.value = true
+  try {
+    const note = await api.invoices.createCreditNote(i.id, { amount: credit.amount || undefined, reason: credit.reason.trim() })
+    creditOpen.value = false
+    setInvoice(await api.invoices.get(i.id))
+    tab.value = 'credits'
+    toast.add({ severity: 'success', summary: `Avoir ${note.number} créé`, life: 4000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Avoir impossible', detail: e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : (e as Error).message, life: 6000 })
+  } finally {
+    busy.value = false
+  }
+}
+async function openCreditPdf(id: number): Promise<void> {
+  const url = URL.createObjectURL(await api.invoices.creditNotePdf(id))
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 function onSent(i: Invoice): void {
   setInvoice(i)
   toast.add({ severity: 'success', summary: 'Facture envoyée', detail: i.emails?.[0]?.to.join(', '), life: 4000 })
@@ -277,7 +319,9 @@ function removePayment(paymentId: number): void {
         <div class="actions">
           <Button v-if="editable && invoice.can.issue" label="Émettre" icon="pi pi-check-circle" :disabled="busy || !invoice.lines?.length" @click="openIssue" />
           <Button v-if="invoice.number && invoice.can.update && invoice.status.value !== 'cancelled'" label="Envoyer" icon="pi pi-send" @click="emailOpen = true" />
+          <Button v-if="remindable" label="Relancer" icon="pi pi-bell" severity="warn" outlined @click="reminderOpen = true" />
           <Button label="PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
+          <Button v-if="creditable" label="Avoir" icon="pi pi-replay" severity="secondary" outlined @click="openCredit" />
           <Button
             v-if="invoice.can.issue && ['issued', 'partially_paid'].includes(invoice.status.value) && !invoice.payments?.length"
             label="Annuler"
@@ -309,7 +353,7 @@ function removePayment(paymentId: number): void {
                 </div>
                 <div class="form-field form-field--full">
                   <label for="i-intro">Introduction</label>
-                  <Textarea id="i-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
+                  <MarkdownEditor id="i-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
                 </div>
               </div>
 
@@ -348,6 +392,7 @@ function removePayment(paymentId: number): void {
           <Tabs v-model:value="tab">
             <TabList>
               <Tab value="payments">Paiements <span v-if="invoice.payments?.length" class="count">{{ invoice.payments.length }}</span></Tab>
+              <Tab v-if="invoice.credit_notes?.length || invoice.reminders?.length" value="credits">Avoirs et relances</Tab>
               <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Documents</Tab>
@@ -382,6 +427,36 @@ function removePayment(paymentId: number): void {
                     <InputText v-model="payment.reference" placeholder="Référence (n° de chèque, de transaction…)" />
                     <Button type="submit" label="Enregistrer le paiement" icon="pi pi-plus" size="small" :disabled="busy || !payment.amount" />
                   </form>
+                </div>
+              </TabPanel>
+              <TabPanel value="credits">
+                <div class="panel">
+                  <h4 v-if="invoice.credit_notes?.length">Avoirs</h4>
+                  <table v-if="invoice.credit_notes?.length" class="list">
+                    <thead><tr><th>Numéro</th><th>Date</th><th>Motif</th><th class="num">Montant</th><th>Par</th><th /></tr></thead>
+                    <tbody>
+                      <tr v-for="n in invoice.credit_notes" :key="n.id">
+                        <td>{{ n.number }}</td>
+                        <td>{{ formatDate(n.issued_at) }}</td>
+                        <td class="pre">{{ n.reason }}</td>
+                        <td class="num">{{ money(n.amount) }}</td>
+                        <td>{{ n.creator?.full_name ?? '—' }}</td>
+                        <td><Button icon="pi pi-file-pdf" size="small" text rounded aria-label="PDF" @click="openCreditPdf(n.id)" /></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <h4 v-if="invoice.reminders?.length">Relances</h4>
+                  <table v-if="invoice.reminders?.length" class="list">
+                    <thead><tr><th>N°</th><th>Date</th><th>Envoi</th><th>Par</th></tr></thead>
+                    <tbody>
+                      <tr v-for="r in invoice.reminders" :key="r.id">
+                        <td>{{ r.level }}</td>
+                        <td>{{ formatDateTime(r.sent_at) }}</td>
+                        <td>{{ r.automatic ? 'automatique' : 'à la main' }}</td>
+                        <td>{{ r.sender?.full_name ?? '—' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </TabPanel>
               <TabPanel value="emails">
@@ -420,6 +495,7 @@ function removePayment(paymentId: number): void {
                 </tr>
                 <template v-if="invoice.status.value !== 'draft' && invoice.status.value !== 'cancelled'">
                   <tr><td>Déjà réglé</td><td>{{ money(invoice.paid_amount) }}</td></tr>
+                  <tr v-if="invoice.credited_amount"><td>Avoirs</td><td>− {{ money(invoice.credited_amount) }}</td></tr>
                   <tr class="remaining"><td>Reste à payer</td><td>{{ money(invoice.remaining_amount) }}</td></tr>
                 </template>
               </table>
@@ -461,11 +537,11 @@ function removePayment(paymentId: number): void {
                 </label>
                 <div class="form-field">
                   <label for="i-terms">Modalités de paiement</label>
-                  <Textarea id="i-terms" v-model="header.payment_terms" rows="3" auto-resize :disabled="!editable" @change="saveHeader('payment_terms')" />
+                  <MarkdownEditor id="i-terms" v-model="header.payment_terms" rows="3" auto-resize :disabled="!editable" @change="saveHeader('payment_terms')" />
                 </div>
                 <div class="form-field">
                   <label for="i-notes">Notes internes</label>
-                  <Textarea id="i-notes" v-model="header.notes" rows="3" auto-resize :disabled="!invoice.can.update" @change="saveHeader('notes')" />
+                  <MarkdownEditor id="i-notes" v-model="header.notes" rows="3" auto-resize :disabled="!invoice.can.update" @change="saveHeader('notes')" />
                   <small class="muted">Jamais imprimées ; modifiables après l'émission.</small>
                 </div>
               </div>
@@ -495,11 +571,37 @@ function removePayment(paymentId: number): void {
       </Dialog>
 
       <InvoiceEmailDialog v-if="invoice.number" v-model:visible="emailOpen" :invoice="invoice" @sent="onSent" />
+      <InvoiceReminderDialog v-if="invoice.number && remindable" v-model:visible="reminderOpen" :invoice="invoice" @sent="onReminded" />
+      <Dialog v-model:visible="creditOpen" modal header="Créer un avoir" :style="{ width: '28rem' }">
+        <div class="credit-form">
+          <p class="muted small">
+            L'avoir annule tout ou partie de la facture {{ invoice.number }} (jusqu'à {{ money(invoice.creditable_amount) }}).
+            Il reçoit un numéro et ne se modifie plus.
+          </p>
+          <label>Montant <InputNumber v-model="credit.amount" :min="1" :max="invoice.creditable_amount" :suffix="currency === 'XOF' ? ' F CFA' : ` ${currency}`" fluid /></label>
+          <label>Motif <Textarea v-model="credit.reason" rows="3" auto-resize placeholder="Remise commerciale, prestation non réalisée…" fluid /></label>
+        </div>
+        <template #footer>
+          <Button label="Annuler" severity="secondary" text @click="creditOpen = false" />
+          <Button label="Créer l'avoir" icon="pi pi-check" :loading="busy" :disabled="!credit.reason.trim() || !credit.amount" @click="createCredit" />
+        </template>
+      </Dialog>
     </template>
   </div>
 </template>
 
 <style scoped>
+.credit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.credit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .center {
   display: flex;
   flex-direction: column;

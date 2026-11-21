@@ -6,15 +6,18 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Tag from 'primevue/tag'
+import Select from 'primevue/select'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { ApiError } from '@dash4/shared'
-import type { Cv } from '@dash4/shared'
+import { ApiError, NOTIFICATION_CATEGORIES, THEMES } from '@dash4/shared'
+import type { Cv, NotificationCategory, Theme } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { initials, nextCvName } from '@/utils/cv'
 import { formatDate } from '@/utils/projects'
 import EmailSignaturesPanel from '@/components/EmailSignaturesPanel.vue'
+import { applyTheme } from '@/utils/theme'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -74,6 +77,22 @@ async function changePassword(): Promise<void> {
     toast.add({ severity: 'error', summary: 'Changement impossible', detail: errorDetail(e), life: 6000 })
   } finally {
     pwdSaving.value = false
+  }
+}
+
+// Préférences : enregistrées dès qu'on les change
+async function setTheme(theme: Theme): Promise<void> {
+  applyTheme(theme)
+  await savePreferences({ theme })
+}
+async function setNotification(category: NotificationCategory, on: boolean): Promise<void> {
+  await savePreferences({ notifications: { [category]: on } })
+}
+async function savePreferences(preferences: { theme?: Theme; notifications?: Partial<Record<NotificationCategory, boolean>> }): Promise<void> {
+  try {
+    auth.user = await api.profile.update({ preferences })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Préférence non enregistrée', detail: errorDetail(e), life: 5000 })
   }
 }
 
@@ -159,6 +178,25 @@ function remove(cv: Cv): void {
       </template>
     </Card>
 
+    <Card v-if="auth.user.preferences">
+      <template #title>Préférences</template>
+      <template #content>
+        <div class="prefs">
+          <label class="pref-theme">
+            Thème
+            <Select :model-value="auth.user.preferences.theme" :options="THEMES" option-label="label" option-value="value" @update:model-value="setTheme" />
+          </label>
+          <div>
+            <p class="muted small">Notifications reçues (les alertes de sécurité restent toujours actives) :</p>
+            <label v-for="c in NOTIFICATION_CATEGORIES" :key="c.value" class="pref-row">
+              <ToggleSwitch :model-value="auth.user.preferences.notifications[c.value]" @update:model-value="setNotification(c.value, $event)" />
+              {{ c.label }}
+            </label>
+          </div>
+        </div>
+      </template>
+    </Card>
+
     <Card>
       <template #title>Mot de passe</template>
       <template #content>
@@ -241,6 +279,22 @@ function remove(cv: Cv): void {
 .small {
   font-size: 0.85rem;
   margin: 0.25rem 0 0;
+}
+.prefs {
+  display: grid;
+  gap: 1rem;
+}
+.pref-theme {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 16rem;
+}
+.pref-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 .cv-list {
   list-style: none;

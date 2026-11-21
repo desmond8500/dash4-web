@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import DatePicker from 'primevue/datepicker'
@@ -154,7 +155,7 @@ async function save(): Promise<void> {
       </div>
       <div class="form-field form-field--full">
         <label for="t-desc">Description</label>
-        <Textarea id="t-desc" v-model="form.description" rows="3" auto-resize />
+        <MarkdownEditor id="t-desc" v-model="form.description" rows="3" auto-resize />
       </div>
       <div v-if="!editing" class="form-field form-field--full">
         <label for="t-subtasks">Sous-tâches (une par ligne)</label>

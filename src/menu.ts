@@ -10,6 +10,8 @@ export interface MenuEntry {
   permissions: string[]
   /** Compteur affiché à côté du libellé. */
   badge?: 'client_requests' | 'messages'
+  /** Permissions toutes nécessaires en plus (ex. voir les prix). */
+  allOf?: string[]
 }
 
 export const MENU: MenuEntry[] = [
@@ -35,10 +37,13 @@ export const MENU: MenuEntry[] = [
   },
   { label: 'Devis', icon: 'pi pi-file-edit', to: '/devis', permissions: ['quotes.view', 'quotes.view.own'] },
   { label: 'Factures', icon: 'pi pi-receipt', to: '/factures', permissions: ['invoices.view'] },
+  { label: 'Échéancier', icon: 'pi pi-calendar-clock', to: '/echeancier', permissions: ['invoices.view'] },
   { label: 'Contrats', icon: 'pi pi-file-check', to: '/contrats', permissions: ['contracts.view'] },
   { label: 'Stock', icon: 'pi pi-box', to: '/stock', permissions: ['stock.view'] },
   { label: 'Achats', icon: 'pi pi-shopping-cart', to: '/achats', permissions: ['purchases.view', 'purchases.view.own'] },
   { label: 'Dépenses', icon: 'pi pi-wallet', to: '/depenses', permissions: ['accounting.view', 'accounting.view.own'] },
+  // Les exports comptables demandent aussi de voir les prix (le magasinier exporte seulement le stock)
+  { label: 'Exports', icon: 'pi pi-file-export', to: '/exports', permissions: ['exports.run'], allOf: ['prices.view'] },
   { label: 'Comptabilité', icon: 'pi pi-chart-bar', to: '/comptabilite', permissions: ['accounting.view'] },
   { label: 'Contacts', icon: 'pi pi-address-book', to: '/contacts', permissions: ['clients.view', 'clients.view.own'] },
   { label: 'Utilisateurs', icon: 'pi pi-users', to: '/utilisateurs', permissions: ['users.view'] },
@@ -48,9 +53,13 @@ export const MENU: MenuEntry[] = [
     to: '/entreprise',
     permissions: ['company.view', 'bank.view', 'signature.manage', 'settings.view'],
   },
+  { label: 'Sauvegardes', icon: 'pi pi-database', to: '/sauvegardes', permissions: ['backups.manage'] },
 ]
 
 export function visibleMenu(canAny: (permissions: string[]) => boolean): MenuEntry[] {
   // Sans permission listée : visible de tous (messagerie)
-  return MENU.filter((entry) => entry.permissions.length === 0 || canAny(entry.permissions))
+  return MENU.filter(
+    (entry) =>
+      (entry.permissions.length === 0 || canAny(entry.permissions)) && (entry.allOf ?? []).every((p) => canAny([p])),
+  )
 }

@@ -6,7 +6,7 @@ import Tag from 'primevue/tag'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import DatePicker from 'primevue/datepicker'
@@ -381,7 +381,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
                 </div>
                 <div class="form-field form-field--full">
                   <label for="q-intro">Introduction (en tête du devis)</label>
-                  <Textarea id="q-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
+                  <MarkdownEditor id="q-intro" v-model="header.introduction" rows="2" auto-resize :disabled="!editable" @change="saveHeader('introduction')" />
                 </div>
               </div>
             </template>
@@ -422,11 +422,11 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
               <div class="form-grid">
                 <div class="form-field form-field--full">
                   <label for="q-terms">Modalités de paiement</label>
-                  <Textarea id="q-terms" v-model="header.payment_terms" rows="2" auto-resize placeholder="Ex. : 50 % à la commande, solde à la livraison" :disabled="!editable" @change="saveHeader('payment_terms')" />
+                  <MarkdownEditor id="q-terms" v-model="header.payment_terms" rows="2" auto-resize placeholder="Ex. : 50 % à la commande, solde à la livraison" :disabled="!editable" @change="saveHeader('payment_terms')" />
                 </div>
                 <div class="form-field form-field--full">
                   <label for="q-notes">Notes internes (non imprimées)</label>
-                  <Textarea id="q-notes" v-model="header.notes" rows="2" auto-resize :disabled="!quote.can.update" @change="saveHeader('notes')" />
+                  <MarkdownEditor id="q-notes" v-model="header.notes" rows="2" auto-resize :disabled="!quote.can.update" @change="saveHeader('notes')" />
                 </div>
               </div>
             </template>

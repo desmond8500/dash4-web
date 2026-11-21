@@ -4,6 +4,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { ApiError } from '@dash4/shared'
@@ -108,7 +109,7 @@ async function save(): Promise<void> {
         <Button label="Utiliser ma position actuelle" icon="pi pi-map-marker" size="small" text :loading="locating" @click="locate" />
         <small class="muted"> (sur place, chez le fournisseur)</small>
       </div>
-      <div class="form-field form-field--full"><label for="p-desc">Notes</label><Textarea id="p-desc" v-model="form.description" rows="2" auto-resize /></div>
+      <div class="form-field form-field--full"><label for="p-desc">Notes</label><MarkdownEditor id="p-desc" v-model="form.description" rows="2" auto-resize /></div>
     </form>
     <template #footer>
       <Button label="Annuler" severity="secondary" text @click="visible = false" />

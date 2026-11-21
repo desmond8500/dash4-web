@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -128,7 +128,7 @@ function remove(): void {
               </div>
               <div class="form-field form-field--full">
                 <label for="b-desc">Description</label>
-                <Textarea id="b-desc" v-model="form.description" rows="2" auto-resize :disabled="!brand.can.update" @change="save('description')" />
+                <MarkdownEditor id="b-desc" v-model="form.description" rows="2" auto-resize :disabled="!brand.can.update" @change="save('description')" />
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -197,7 +198,7 @@ function remove(): void {
                   </template>
                 </dl>
               </div>
-              <p v-if="article.description" class="pre">{{ article.description }}</p>
+              <MarkdownView :text="article.description" />
             </template>
           </Card>
 

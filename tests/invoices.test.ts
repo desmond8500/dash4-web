@@ -47,3 +47,19 @@ describe('factures', () => {
     expect(labels(['interventions.view.own'])).not.toContain('Factures')
   })
 })
+
+describe('relances et avoirs', () => {
+  const base = { number: 'FAC-2026-0001', remaining_amount: 1000, creditable_amount: 1000, can: { update: true, edit: false, issue: true, delete: false } }
+  it('ne relance qu\'une facture émise non soldée', async () => {
+    const { canRemind } = await import('../src/utils/invoices')
+    expect(canRemind({ ...base, status: { value: 'issued', label: '' } } as never)).toBe(true)
+    expect(canRemind({ ...base, status: { value: 'paid', label: '' } } as never)).toBe(false)
+    expect(canRemind({ ...base, remaining_amount: 0, status: { value: 'partially_paid', label: '' } } as never)).toBe(false)
+  })
+  it('permet un avoir sur une facture payée, pas sur un brouillon', async () => {
+    const { canCredit } = await import('../src/utils/invoices')
+    expect(canCredit({ ...base, status: { value: 'paid', label: '' } } as never)).toBe(true)
+    expect(canCredit({ ...base, status: { value: 'draft', label: '' } } as never)).toBe(false)
+    expect(canCredit({ ...base, creditable_amount: 0, status: { value: 'issued', label: '' } } as never)).toBe(false)
+  })
+})

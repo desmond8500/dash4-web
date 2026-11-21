@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import SelectButton from 'primevue/selectbutton'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -170,11 +170,11 @@ function restock(note: DeliveryNote): void {
         </div>
         <div class="form-field form-field--full">
           <label for="bl-done">Travaux réalisés</label>
-          <Textarea id="bl-done" v-model="form.done" rows="3" auto-resize />
+          <MarkdownEditor id="bl-done" v-model="form.done" rows="3" auto-resize />
         </div>
         <div class="form-field form-field--full">
           <label for="bl-todo">Reste à faire</label>
-          <Textarea id="bl-todo" v-model="form.todo" rows="2" auto-resize />
+          <MarkdownEditor id="bl-todo" v-model="form.todo" rows="2" auto-resize />
         </div>
         <label class="form-field--full switch"><ToggleSwitch v-model="form.show_logo" /> Logo sur le PDF</label>
       </form>

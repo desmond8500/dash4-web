@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Tabs from 'primevue/tabs'
@@ -197,7 +197,7 @@ function remove(): void {
                 <div class="form-field"><label for="j-date">Date</label><DatePicker v-model="header.date" input-id="j-date" date-format="dd/mm/yy" :disabled="!editable" @update:model-value="saveHeader('date')" /></div>
                 <div class="form-field"><label for="j-starts">Début</label><DatePicker v-model="header.starts" input-id="j-starts" time-only hour-format="24" :disabled="!editable" @hide="saveHeader('times')" /></div>
                 <div class="form-field"><label for="j-ends">Fin</label><DatePicker v-model="header.ends" input-id="j-ends" time-only hour-format="24" :disabled="!editable" @hide="saveHeader('times')" /></div>
-                <div class="form-field form-field--full"><label for="j-summary">Résumé</label><Textarea id="j-summary" v-model="header.summary" rows="2" auto-resize :disabled="!editable" @change="saveHeader('summary')" /></div>
+                <div class="form-field form-field--full"><label for="j-summary">Résumé</label><MarkdownEditor id="j-summary" v-model="header.summary" rows="2" auto-resize :disabled="!editable" @change="saveHeader('summary')" /></div>
               </div>
             </template>
           </Card>
@@ -214,7 +214,7 @@ function remove(): void {
                     <Button icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer la section" @click="removeSection(i)" />
                   </template>
                 </div>
-                <Textarea v-model="s.body" rows="3" auto-resize fluid :disabled="!editable" placeholder="Ce qui a été fait, constaté, ce qui reste…" @change="saveSections" />
+                <MarkdownEditor v-model="s.body" rows="3" auto-resize fluid :disabled="!editable" placeholder="Ce qui a été fait, constaté, ce qui reste…" @change="saveSections" />
                 <SectionPhotos v-if="s.id" :section-id="s.id" :photos="s.photos" :can-add="editable" :can-manage="!!journal.can.delete" />
               </div>
               <p v-if="!sections.length" class="muted">Aucune section.</p>

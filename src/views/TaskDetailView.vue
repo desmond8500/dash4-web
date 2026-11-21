@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -139,7 +140,7 @@ function remove(): void {
         <div class="main">
           <Card>
             <template #content>
-              <p v-if="task!.description" class="pre">{{ task!.description }}</p>
+              <MarkdownView v-if="task!.description" :text="task!.description" />
               <p v-else class="muted">Pas de description.</p>
 
               <h3>Sous-tâches <span v-if="task!.subtasks_count" class="muted small">{{ task!.subtasks_done }}/{{ task!.subtasks_count }}</span></h3>

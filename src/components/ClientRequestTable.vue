@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownView from '@/components/MarkdownView.vue'
 import { ref } from 'vue'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -79,7 +80,7 @@ function onRowClick(event: DataTableRowClickEvent): void {
     <Column header="Demande">
       <template #body="{ data }">
         <div class="request">
-          <span class="body">{{ data.body }}</span>
+          <MarkdownView class="body" :text="data.body" />
           <span v-if="!props.hideClient" class="muted">
             {{ requesterLabel(data) }}
             <template v-if="!data.client && data.contact_name && data.contact_phone"> · {{ data.contact_phone }}</template>
@@ -140,7 +141,6 @@ function onRowClick(event: DataTableRowClickEvent): void {
 }
 
 .body {
-  white-space: pre-line;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;

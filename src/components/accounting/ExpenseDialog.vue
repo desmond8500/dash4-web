@@ -3,15 +3,16 @@ import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
+import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { ApiError, formatMoney, PAYMENT_METHODS } from '@dash4/shared'
-import type { Expense, ExpenseCategory, ExpensePayload, ExpenseSpace, PaymentMethod, Project } from '@dash4/shared'
+import type { Article, Expense, ExpenseCategory, ExpensePayload, ExpenseSpace, PaymentMethod, Project } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
@@ -47,6 +48,17 @@ const form = ref({
   advanced: false,
   description: '',
 })
+// Article du stock acheté (facultatif) : choisi par recherche
+type ArticleRef = Pick<Article, 'id' | 'designation' | 'reference'>
+const article = ref<ArticleRef | null>(null)
+const articleSuggestions = ref<ArticleRef[]>([])
+async function searchArticles(e: AutoCompleteCompleteEvent): Promise<void> {
+  articleSuggestions.value = (await api.articles.list({ search: e.query, per_page: 15 }).catch(() => ({ data: [] as Article[] }))).data
+}
+function onArticle(a: ArticleRef | null): void {
+  article.value = a
+  if (a && !form.value.label.trim()) form.value.label = a.designation
+}
 
 const current = computed(() => props.expense ?? null)
 const editable = computed(() => !current.value || current.value.can.update)
@@ -70,6 +82,7 @@ watch(visible, async (open) => {
     advanced: e?.advanced ?? false,
     description: e?.description ?? '',
   }
+  article.value = e?.article ?? null
   const [c, s, p] = await Promise.allSettled([
     api.expenseCategories.list(),
     api.expenseSpaces.list(),
@@ -118,6 +131,7 @@ function save(): void {
     payment_method: f.payment_method,
     advanced: f.advanced,
     description: f.description.trim() || null,
+    article_id: article.value?.id ?? null,
   }
   const e = current.value
   void run(async () => {
@@ -198,13 +212,19 @@ async function openReceipt(): Promise<void> {
         <label for="x-project">Projet</label>
         <Select id="x-project" v-model="form.project_id" :options="[{ id: null, name: 'Aucun' }, ...projects]" option-label="name" option-value="id" filter :disabled="!editable" />
       </div>
+      <div v-if="auth.can('stock.view')" class="form-field form-field--full">
+        <label for="x-article">Article du stock (facultatif)</label>
+        <AutoComplete v-model="article" input-id="x-article" :suggestions="articleSuggestions" option-label="designation" force-selection placeholder="Rechercher un article" :disabled="!editable" @complete="searchArticles" @option-select="(e) => onArticle(e.value)" @clear="onArticle(null)">
+          <template #option="{ option }">{{ option.designation }}<small v-if="option.reference" class="muted"> · {{ option.reference }}</small></template>
+        </AutoComplete>
+      </div>
       <label class="form-field--full check">
         <Checkbox v-model="form.advanced" binary :disabled="!editable" />
         Payée avec mon argent : à me rembourser<span v-if="form.expense_space_id" class="muted"> (ne sort pas de la caisse)</span>
       </label>
       <div class="form-field form-field--full">
         <label for="x-desc">Détails</label>
-        <Textarea id="x-desc" v-model="form.description" rows="2" auto-resize :disabled="!editable" />
+        <MarkdownEditor id="x-desc" v-model="form.description" rows="2" auto-resize :disabled="!editable" />
       </div>
       <div class="form-field form-field--full">
         <label>Justificatif</label>
