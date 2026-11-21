@@ -1,17 +1,22 @@
 # TODO
 
-## Toute l'application
+## Gestion du parc automobile
 
-- [ ] Pour les textarea mette mini editeur markdown et faire sorte que le contenu markdown soit géré à l'affichage
+- [ ] Ajoute une partie gestion de véhicules et scooters
+- [ ] gérer 
+  - [ ] les caractéristiques
+  - [ ] dépenses
+  - [ ] dossiers administratifs (assurance, carte grise, cmc, etc)
+  - [ ] kilométrage
+  - [ ] entretient
 
-## Page clients
-- [ ] Mettre les section dans des onglets projets, contacts, devis etc
-- [ ] ajouter des champs de recherche notamment pour les projets
-- [ ] trier par ordre alphabetique
+## Gestion des plans
 
-## Page projet
-- [ ] ajouter des champs de recherche dans les sections
-
-## Page Jounal
-
-- [ ] rechercher le mail dans les contacts s'il existe et l'ajouter
+- [ ] Je veux que l'on puisse traiter les plans dans une page spécifique
+- [ ] les plans n'apparaissent pas dans les pdf
+- [ ] je veux que l'on  cree une bibliotheque d'icones pour les articles, ces derniers seront utilisés pour les matérialiser comme équipement
+- [ ] les icones sur les plans doivent 
+  - [ ] pouvoir etre redimentionnés, pivoter, changer de couleur
+  - [ ] avoir un menu contextuel pour des options ou fonctionalité
+  - [ ] générer une légende
+  - [ ] utiliser un système de calque pour afficher ou masquer des éléments par système
