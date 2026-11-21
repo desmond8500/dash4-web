@@ -12,7 +12,7 @@ defineOptions({ inheritAttrs: false })
 const model = defineModel<string | null | undefined>()
 const props = withDefaults(defineProps<{ disabled?: boolean; autoResize?: boolean }>(), { disabled: false, autoResize: true })
 
-const area = ref<InstanceType<typeof Textarea> | null>(null)
+const root = ref<HTMLElement | null>(null)
 const preview = ref(false)
 const empty = computed(() => !(model.value ?? '').trim())
 
@@ -28,7 +28,7 @@ const tools: { action: MarkdownAction; icon?: string; text?: string; title: stri
 ]
 
 function element(): HTMLTextAreaElement | null {
-  return (area.value?.$el as HTMLTextAreaElement | undefined) ?? null
+  return root.value?.querySelector('textarea') ?? null
 }
 
 async function apply(action: MarkdownAction): Promise<void> {
@@ -52,7 +52,7 @@ function onKeydown(e: KeyboardEvent): void {
 </script>
 
 <template>
-  <div class="md-editor" :class="{ disabled: props.disabled }">
+  <div ref="root" class="md-editor" :class="{ disabled: props.disabled }">
     <div v-if="!props.disabled" class="md-toolbar" role="toolbar" aria-label="Mise en forme">
       <template v-if="!preview">
         <button v-for="t in tools" :key="t.action" type="button" class="md-tool" :title="t.title" :aria-label="t.title" @mousedown.prevent @click="apply(t.action)">
@@ -71,7 +71,6 @@ function onKeydown(e: KeyboardEvent): void {
     </div>
     <Textarea
       v-show="!preview"
-      ref="area"
       v-model="model"
       v-bind="$attrs"
       :disabled="props.disabled"
