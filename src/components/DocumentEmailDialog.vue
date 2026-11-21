@@ -73,7 +73,10 @@ const canSearchContacts = computed(() => auth.canAny(['clients.view', 'clients.v
 const contactOptions = ref<ContactEmailOption[]>([])
 let searchSeq = 0
 
-async function searchContacts(event: AutoCompleteCompleteEvent, list: typeof to): Promise<void> {
+const fields = { to: { input: toInput, list: to }, cc: { input: ccInput, list: cc } }
+
+async function searchContacts(event: AutoCompleteCompleteEvent, field: keyof typeof fields): Promise<void> {
+  const { list } = fields[field]
   const query = event.query.trim()
   const seq = ++searchSeq
   if (query.length < 2 || !canSearchContacts.value) {
@@ -88,7 +91,8 @@ async function searchContacts(event: AutoCompleteCompleteEvent, list: typeof to)
   }
 }
 
-function pickContact(event: AutoCompleteOptionSelectEvent, input: typeof toInput, list: typeof to): void {
+function pickContact(event: AutoCompleteOptionSelectEvent, field: keyof typeof fields): void {
+  const { input, list } = fields[field]
   const option = event.value as ContactEmailOption
   list.value = [...new Set([...list.value, option.email])]
   input.value = ''
@@ -193,8 +197,8 @@ async function send(): Promise<void> {
           :min-length="2"
           fluid
           placeholder="Nom d'un contact ou adresse, puis Entrée"
-          @complete="searchContacts($event, to)"
-          @option-select="pickContact($event, toInput, to)"
+          @complete="searchContacts($event, 'to')"
+          @option-select="pickContact($event, 'to')"
           @keydown.enter="onEnter($event, addTo)"
           @blur="addTo"
         >
@@ -221,8 +225,8 @@ async function send(): Promise<void> {
           :min-length="2"
           fluid
           placeholder="Facultatif — nom d'un contact ou adresse"
-          @complete="searchContacts($event, cc)"
-          @option-select="pickContact($event, ccInput, cc)"
+          @complete="searchContacts($event, 'cc')"
+          @option-select="pickContact($event, 'cc')"
           @keydown.enter="onEnter($event, addCc)"
           @blur="addCc"
         >
