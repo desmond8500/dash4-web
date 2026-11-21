@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import MarkdownView from '@/components/MarkdownView.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -27,6 +27,10 @@ import QuoteTable from '@/components/quotes/QuoteTable.vue'
 import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
 import { useSettingsStore } from '@/stores/settings'
 import Tabs from 'primevue/tabs'
+import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import { searchAndSort, searchOnly } from '@/utils/listSearch'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
@@ -56,7 +60,6 @@ const contacts = computed(() => client.value?.contacts ?? [])
 const canSeeProjects = computed(() => auth.canAny(['projects.view', 'projects.view.own']))
 const projects = ref<Project[]>([])
 const projectDialog = ref(false)
-const attachmentsTab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
 
 async function loadProjects(): Promise<void> {
   if (!canSeeProjects.value) return
@@ -255,6 +258,27 @@ function removeContact(contact: Contact): void {
   })
 }
 
+// Onglets de la fiche : ?onglet=projets|contacts|devis|demandes|commentaires|notes|liens|documents
+const TAB_NAMES: Record<string, string> = {
+  projets: 'projects', contacts: 'contacts', devis: 'quotes', demandes: 'requests',
+  commentaires: 'comments', notes: 'notes', liens: 'links', documents: 'documents',
+}
+const route = useRoute()
+const tab = ref(TAB_NAMES[String(route.query.onglet ?? '')] ?? (canSeeProjects.value ? 'projects' : 'contacts'))
+watch(tab, (value) => {
+  const name = Object.keys(TAB_NAMES).find((k) => TAB_NAMES[k] === value)
+  if (name && route.query.onglet !== name) void router.replace({ query: { ...route.query, onglet: name } })
+})
+
+// Recherche dans les onglets ; projets et contacts par ordre alphabétique, devis et demandes du plus récent au plus ancien
+const search = reactive({ projects: '', contacts: '', quotes: '', requests: '' })
+const shownProjects = computed(() => searchAndSort(projects.value, search.projects, (p) => p.name, (p) => [p.name, p.address, p.status.label]))
+const shownContacts = computed(() =>
+  searchAndSort(contacts.value, search.contacts, (c) => c.full_name, (c) => [c.full_name, c.job_title, ...contactPhones(c), ...contactEmails(c)]),
+)
+const shownQuotes = computed(() => searchOnly(quotes.value, search.quotes, (q) => [q.number, q.title, q.project?.name, q.status.label]))
+const shownRequests = computed(() => searchOnly(requests.value, search.requests, (r) => [r.body, r.contact_name, r.status.label]))
+
 function contactPhones(contact: Contact): string[] {
   return [contact.phone, ...(contact.phones ?? []).map((p) => p.number)].filter((v): v is string => !!v)
 }
@@ -372,121 +396,126 @@ function contactEmails(contact: Contact): string[] {
         </template>
       </Card>
 
-      <div class="page-header">
-        <h2>Contacts</h2>
-        <Button
-          v-if="auth.can('clients.create')"
-          label="Ajouter un contact"
-          icon="pi pi-user-plus"
-          size="small"
-          @click="openContact(null)"
-        />
-      </div>
-
-      <DataTable :value="contacts" data-key="id" striped-rows>
-        <template #empty>Aucun contact pour ce client.</template>
-        <Column header="Nom">
-          <template #body="{ data }">
-            <div class="name">
-              <strong>{{ data.civility ? `${data.civility.label} ` : '' }}{{ data.full_name }}</strong>
-              <span class="muted">{{ data.job_title }}</span>
-            </div>
-          </template>
-        </Column>
-        <Column header="Téléphone">
-          <template #body="{ data }">
-            <div v-for="number in contactPhones(data)" :key="number">
-              <a :href="telHref(number)">{{ number }}</a>
-            </div>
-          </template>
-        </Column>
-        <Column header="E-mail">
-          <template #body="{ data }">
-            <div v-for="address in contactEmails(data)" :key="address">
-              <a :href="`mailto:${address}`">{{ address }}</a>
-            </div>
-          </template>
-        </Column>
-        <Column header="" style="width: 7rem">
-          <template #body="{ data }">
-            <Button
-              v-if="auth.can('clients.update')"
-              icon="pi pi-pencil"
-              text
-              rounded
-              aria-label="Modifier"
-              @click="openContact(data)"
-            />
-            <Button
-              v-if="auth.can('clients.delete')"
-              icon="pi pi-trash"
-              severity="danger"
-              text
-              rounded
-              aria-label="Supprimer"
-              @click="removeContact(data)"
-            />
-          </template>
-        </Column>
-      </DataTable>
-
-      <template v-if="canSeeProjects">
-        <div class="page-header">
-          <h2>Projets</h2>
-          <Button
-            v-if="auth.can('projects.create')"
-            label="Nouveau projet"
-            icon="pi pi-plus"
-            size="small"
-            @click="projectDialog = true"
-          />
-        </div>
-        <DataTable
-          :value="projects"
-          data-key="id"
-          row-hover
-          class="clickable"
-          @row-click="router.push({ name: 'project', params: { id: $event.data.id } })"
-        >
-          <template #empty>Aucun projet pour ce client.</template>
-          <Column header="Projet">
-            <template #body="{ data }"><strong>{{ data.name }}</strong></template>
-          </Column>
-          <Column header="Statut" style="width: 9rem">
-            <template #body="{ data }">
-              <Tag :value="data.status.label" :severity="projectStatusSeverity(data.status.value)" />
-            </template>
-          </Column>
-          <Column header="Période" style="width: 15rem">
-            <template #body="{ data }">
-              <span class="muted">{{ periodLabel(data.start_date, data.end_date) || '—' }}</span>
-            </template>
-          </Column>
-        </DataTable>
-        <ProjectFormDialog v-model:visible="projectDialog" :project="null" :client-id="client.id" @saved="onProjectSaved" />
-      </template>
-
-      <template v-if="canSeeQuotes">
-        <div class="page-header">
-          <h2>Devis</h2>
-          <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" size="small" @click="quoteDialog = true" />
-        </div>
-        <QuoteTable :quotes="quotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
-        <QuoteCreateDialog
-          v-model:visible="quoteDialog"
-          :client-id="client.id"
-          @created="(q) => router.push({ name: 'quote', params: { id: q.id } })"
-        />
-      </template>
-
-      <Tabs v-model:value="attachmentsTab">
+      <Tabs v-model:value="tab" class="client-tabs">
         <TabList>
+          <Tab v-if="canSeeProjects" value="projects">Projets <span class="count">{{ projects.length }}</span></Tab>
+          <Tab value="contacts">Contacts <span class="count">{{ contacts.length }}</span></Tab>
+          <Tab v-if="canSeeQuotes" value="quotes">Devis <span class="count">{{ quotes.length }}</span></Tab>
+          <Tab v-if="canSeeRequests" value="requests">Demandes <span class="count">{{ requests.length }}</span></Tab>
           <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
           <Tab value="notes">Notes</Tab>
           <Tab value="links">Liens</Tab>
           <Tab value="documents">Documents</Tab>
         </TabList>
         <TabPanels>
+          <TabPanel v-if="canSeeProjects" value="projects">
+            <div class="tab-toolbar">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.projects" placeholder="Rechercher un projet…" aria-label="Rechercher un projet" />
+              </IconField>
+              <Button v-if="auth.can('projects.create')" label="Nouveau projet" icon="pi pi-plus" size="small" @click="projectDialog = true" />
+            </div>
+            <DataTable
+              :value="shownProjects"
+              data-key="id"
+              row-hover
+              class="clickable"
+              @row-click="router.push({ name: 'project', params: { id: $event.data.id } })"
+            >
+              <template #empty>{{ search.projects ? 'Aucun projet ne correspond à la recherche.' : 'Aucun projet pour ce client.' }}</template>
+              <Column header="Projet">
+                <template #body="{ data }"><strong>{{ data.name }}</strong></template>
+              </Column>
+              <Column header="Statut" style="width: 9rem">
+                <template #body="{ data }">
+                  <Tag :value="data.status.label" :severity="projectStatusSeverity(data.status.value)" />
+                </template>
+              </Column>
+              <Column header="Période" style="width: 15rem">
+                <template #body="{ data }">
+                  <span class="muted">{{ periodLabel(data.start_date, data.end_date) || '—' }}</span>
+                </template>
+              </Column>
+            </DataTable>
+            <ProjectFormDialog v-model:visible="projectDialog" :project="null" :client-id="client.id" @saved="onProjectSaved" />
+          </TabPanel>
+
+          <TabPanel value="contacts">
+            <div class="tab-toolbar">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.contacts" placeholder="Rechercher un contact…" aria-label="Rechercher un contact" />
+              </IconField>
+              <Button v-if="auth.can('clients.create')" label="Ajouter un contact" icon="pi pi-user-plus" size="small" @click="openContact(null)" />
+            </div>
+            <DataTable :value="shownContacts" data-key="id" striped-rows>
+              <template #empty>{{ search.contacts ? 'Aucun contact ne correspond à la recherche.' : 'Aucun contact pour ce client.' }}</template>
+              <Column header="Nom">
+                <template #body="{ data }">
+                  <div class="name">
+                    <strong>{{ data.civility ? `${data.civility.label} ` : '' }}{{ data.full_name }}</strong>
+                    <span class="muted">{{ data.job_title }}</span>
+                  </div>
+                </template>
+              </Column>
+              <Column header="Téléphone">
+                <template #body="{ data }">
+                  <div v-for="number in contactPhones(data)" :key="number">
+                    <a :href="telHref(number)">{{ number }}</a>
+                  </div>
+                </template>
+              </Column>
+              <Column header="E-mail">
+                <template #body="{ data }">
+                  <div v-for="address in contactEmails(data)" :key="address">
+                    <a :href="`mailto:${address}`">{{ address }}</a>
+                  </div>
+                </template>
+              </Column>
+              <Column header="" style="width: 7rem">
+                <template #body="{ data }">
+                  <Button v-if="auth.can('clients.update')" icon="pi pi-pencil" text rounded aria-label="Modifier" @click="openContact(data)" />
+                  <Button v-if="auth.can('clients.delete')" icon="pi pi-trash" severity="danger" text rounded aria-label="Supprimer" @click="removeContact(data)" />
+                </template>
+              </Column>
+            </DataTable>
+          </TabPanel>
+
+          <TabPanel v-if="canSeeQuotes" value="quotes">
+            <div class="tab-toolbar">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.quotes" placeholder="Numéro, objet, projet…" aria-label="Rechercher un devis" />
+              </IconField>
+              <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" size="small" @click="quoteDialog = true" />
+            </div>
+            <QuoteTable :quotes="shownQuotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
+            <QuoteCreateDialog
+              v-model:visible="quoteDialog"
+              :client-id="client.id"
+              @created="(q) => router.push({ name: 'quote', params: { id: q.id } })"
+            />
+          </TabPanel>
+
+          <TabPanel v-if="canSeeRequests" value="requests">
+            <div class="tab-toolbar">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.requests" placeholder="Rechercher une demande…" aria-label="Rechercher une demande" />
+              </IconField>
+              <Button
+                v-if="auth.can('client_requests.create')"
+                label="Noter une demande"
+                icon="pi pi-plus"
+                size="small"
+                @click="requestsStore.openQuick(client.id)"
+              />
+            </div>
+            <ClientRequestTable :requests="shownRequests" hide-client @open="openRequest" @action="onRequestAction" />
+            <ClientRequestDialog v-model:visible="requestDialog" :request="editedRequest" @saved="requestsStore.changed()" />
+          </TabPanel>
+
           <TabPanel value="comments"><CommentsPanel type="clients" :id="client.id" @changed="commentsCount = $event" /></TabPanel>
           <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel
@@ -499,21 +528,6 @@ function contactEmails(contact: Contact): string[] {
           </TabPanel>
         </TabPanels>
       </Tabs>
-
-      <template v-if="canSeeRequests">
-        <div class="page-header">
-          <h2>Demandes</h2>
-          <Button
-            v-if="auth.can('client_requests.create')"
-            label="Noter une demande"
-            icon="pi pi-plus"
-            size="small"
-            @click="requestsStore.openQuick(client.id)"
-          />
-        </div>
-        <ClientRequestTable :requests="requests" hide-client @open="openRequest" @action="onRequestAction" />
-        <ClientRequestDialog v-model:visible="requestDialog" :request="editedRequest" @saved="requestsStore.changed()" />
-      </template>
 
       <ClientFormDialog v-model:visible="clientDialog" :client="client" @saved="onClientSaved" @logo-failed="onLogoFailed" />
       <ContactFormDialog
@@ -595,8 +609,17 @@ dd {
   margin: 0;
 }
 
-.notes {
-  white-space: pre-line;
+.client-tabs {
+  margin-top: 0.5rem;
+}
+
+.tab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
 }
 
 .name {

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { searchOnly } from '@/utils/listSearch'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
@@ -44,6 +47,12 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const acceptedFiles = DOCUMENT_EXTENSIONS.map((ext) => `.${ext}`).join(',')
 const editingNote = ref<number | null>(null)
 const editingBody = ref('')
+
+// Recherche dans la liste, proposée dès qu'elle s'allonge
+const query = ref('')
+const shownNotes = computed(() => searchOnly(notes.value, query.value, (n) => [n.body, n.creator?.full_name]))
+const shownLinks = computed(() => searchOnly(links.value, query.value, (l) => [l.label, l.url]))
+const shownDocuments = computed(() => searchOnly(documents.value, query.value, (d) => [d.name, d.creator?.full_name]))
 
 const count = computed(() =>
   props.kind === 'notes' ? notes.value.length : props.kind === 'links' ? links.value.length : documents.value.length,
@@ -152,6 +161,7 @@ function onFiles(event: Event): Promise<void> {
 
 // Images : vignettes, et visionneuse plein écran au clic
 const images = computed(() => documents.value.filter(isImageDocument))
+const shownImages = computed(() => shownDocuments.value.filter(isImageDocument))
 const thumbs = ref<Record<number, string>>({})
 watch(images, (list) => {
   for (const d of list.slice(0, 24)) {
@@ -204,6 +214,10 @@ const removeDocument = (doc: Document) =>
 
 <template>
   <div class="panel">
+    <IconField v-if="count > 5" class="search">
+      <InputIcon class="pi pi-search" />
+      <InputText v-model="query" :placeholder="props.kind === 'notes' ? 'Rechercher dans les notes…' : props.kind === 'links' ? 'Rechercher un lien…' : 'Rechercher un document…'" aria-label="Rechercher" />
+    </IconField>
     <!-- Notes -->
     <template v-if="props.kind === 'notes'">
       <form v-if="props.canAdd" class="add" @submit.prevent="addNote">
@@ -221,7 +235,8 @@ const removeDocument = (doc: Document) =>
         </div>
       </form>
       <p v-if="!loading && !notes.length" class="muted">Aucune note.</p>
-      <article v-for="note in notes" :key="note.id" class="note" :class="{ pinned: note.is_pinned }">
+      <p v-else-if="query && !shownNotes.length" class="muted">Aucune note ne correspond à la recherche.</p>
+      <article v-for="note in shownNotes" :key="note.id" class="note" :class="{ pinned: note.is_pinned }">
         <header>
           <span class="muted">
             <i v-if="note.is_pinned" class="pi pi-thumbtack" aria-label="Épinglée" />
@@ -252,7 +267,8 @@ const removeDocument = (doc: Document) =>
         <Button type="submit" label="Ajouter" icon="pi pi-plus" size="small" :loading="busy" :disabled="!linkForm.url.trim()" />
       </form>
       <p v-if="!loading && !links.length" class="muted">Aucun lien.</p>
-      <div v-for="link in links" :key="link.id" class="line">
+      <p v-else-if="query && !shownLinks.length" class="muted">Aucun lien ne correspond à la recherche.</p>
+      <div v-for="link in shownLinks" :key="link.id" class="line">
         <i class="pi pi-link muted" />
         <a :href="link.url" target="_blank" rel="noopener noreferrer" class="grow">{{ link.label || link.url }}</a>
         <span v-if="link.label" class="muted url">{{ link.url }}</span>
@@ -268,13 +284,14 @@ const removeDocument = (doc: Document) =>
         <input ref="fileInput" type="file" multiple hidden :accept="acceptedFiles" @change="onFiles" />
       </div>
       <p v-if="!loading && !documents.length" class="muted">Aucun document.</p>
-      <div v-if="images.length" class="thumbs">
-        <button v-for="doc in images" :key="doc.id" type="button" class="thumb" :title="doc.name" @click="view(doc)">
+      <p v-else-if="query && !shownDocuments.length" class="muted">Aucun document ne correspond à la recherche.</p>
+      <div v-if="shownImages.length" class="thumbs">
+        <button v-for="doc in shownImages" :key="doc.id" type="button" class="thumb" :title="doc.name" @click="view(doc)">
           <img v-if="thumbs[doc.id]" :src="thumbs[doc.id]" :alt="doc.name" />
           <i v-else class="pi pi-image" />
         </button>
       </div>
-      <div v-for="doc in documents" :key="doc.id" class="line">
+      <div v-for="doc in shownDocuments" :key="doc.id" class="line">
         <i :class="fileIcon(doc.name)" class="muted" />
         <button type="button" class="link grow" @click="isImageDocument(doc) ? view(doc) : download(doc)">{{ doc.name }}</button>
         <Button v-if="isImageDocument(doc)" icon="pi pi-download" text rounded size="small" severity="secondary" aria-label="Télécharger" @click="download(doc)" />
@@ -286,6 +303,10 @@ const removeDocument = (doc: Document) =>
 </template>
 
 <style scoped>
+.search {
+  max-width: 22rem;
+}
+
 .thumbs {
   display: flex;
   flex-wrap: wrap;

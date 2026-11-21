@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import MarkdownView from '@/components/MarkdownView.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -11,6 +11,10 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Badge from 'primevue/badge'
+import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import { searchOnly } from '@/utils/listSearch'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -173,6 +177,12 @@ function remove(): void {
 function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
   if (project.value) project.value = { ...project.value, [`${kind}_count`]: count }
 }
+
+// Recherche dans les onglets
+const search = reactive({ quotes: '', tasks: '', journals: '' })
+const shownQuotes = computed(() => searchOnly(quotes.value, search.quotes, (q) => [q.number, q.title, q.status.label]))
+const shownTasks = computed(() => searchOnly(tasks.value, search.tasks, (t) => [t.title, t.status.label, ...(t.assignees ?? []).map((a) => a.full_name)]))
+const shownJournals = computed(() => searchOnly(journals.value, search.journals, (j) => [j.title, j.type.label, j.summary, j.date]))
 </script>
 
 <template>
@@ -281,9 +291,14 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           </TabPanel>
           <TabPanel v-if="canSeeQuotes" value="quotes">
             <div class="tab-actions">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.quotes" placeholder="Numéro, objet…" aria-label="Numéro, objet…" />
+              </IconField>
+              <span class="grow" />
               <Button v-if="auth.can('quotes.create')" label="Nouveau devis" icon="pi pi-plus" size="small" @click="quoteDialog = true" />
             </div>
-            <QuoteTable :quotes="quotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
+            <QuoteTable :quotes="shownQuotes" :currency="settings.currency()" :show-prices="auth.can('prices.view')" hide-client />
             <QuoteCreateDialog
               v-model:visible="quoteDialog"
               :project-id="project.id"
@@ -292,9 +307,14 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           </TabPanel>
           <TabPanel v-if="canSeeTasks" value="tasks">
             <div class="tab-actions">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.tasks" placeholder="Rechercher une tâche…" aria-label="Rechercher une tâche…" />
+              </IconField>
+              <span class="grow" />
               <Button v-if="auth.can('tasks.create')" label="Nouvelle tâche" icon="pi pi-plus" size="small" @click="taskDialog = true" />
             </div>
-            <TaskTable :tasks="tasks" hide-project />
+            <TaskTable :tasks="shownTasks" hide-project />
             <TaskDialog v-model:visible="taskDialog" :project-id="project.id" @saved="(t) => router.push({ name: 'task', params: { id: t.id } })" />
           </TabPanel>
           <TabPanel v-if="canSeeSite" value="site"><SitePanel :project-id="project.id" @loaded="site = $event" /></TabPanel>
@@ -302,9 +322,14 @@ function onCount(kind: 'notes' | 'links' | 'documents', count: number): void {
           <TabPanel v-if="auth.can('badges.view')" value="badges"><BadgesPanel :project-id="project.id" :client-id="project.client_id" @count="badgesCount = $event" /></TabPanel>
           <TabPanel v-if="canSeeJournals" value="journals">
             <div class="tab-actions">
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText v-model="search.journals" placeholder="Rechercher un journal…" aria-label="Rechercher un journal…" />
+              </IconField>
+              <span class="grow" />
               <Button v-if="auth.can('journals.create')" label="Nouveau journal" icon="pi pi-plus" size="small" @click="journalDialog = true" />
             </div>
-            <JournalTable :journals="journals" hide-project />
+            <JournalTable :journals="shownJournals" hide-project />
             <JournalCreateDialog v-model:visible="journalDialog" :project-id="project.id" @created="(j) => router.push({ name: 'journal', params: { id: j.id } })" />
           </TabPanel>
         </TabPanels>
@@ -390,8 +415,14 @@ dd {
 
 .tab-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   margin-bottom: 0.75rem;
+}
+
+.tab-actions .grow {
+  flex: 1;
 }
 
 .soon {
