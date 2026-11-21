@@ -140,7 +140,7 @@ function remove(): void {
         <div class="main">
           <Card>
             <template #content>
-              <MarkdownView :text="task!.description" />
+              <MarkdownView v-if="task!.description" :text="task!.description" />
               <p v-else class="muted">Pas de description.</p>
 
               <h3>Sous-tâches <span v-if="task!.subtasks_count" class="muted small">{{ task!.subtasks_done }}/{{ task!.subtasks_count }}</span></h3>
