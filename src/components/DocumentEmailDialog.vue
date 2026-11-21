@@ -10,7 +10,10 @@ import Chip from 'primevue/chip'
 import Select from 'primevue/select'
 import { ApiError } from '@dash4/shared'
 import type { QuoteEmailDraft, QuoteEmailPayload } from '@dash4/shared'
-import { parseEmails } from '@/utils/quotes'
+import AutoComplete, { type AutoCompleteCompleteEvent, type AutoCompleteOptionSelectEvent } from 'primevue/autocomplete'
+import { contactEmailOptions, parseEmails, type ContactEmailOption } from '@/utils/quotes'
+import { api } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * Envoi d'un document par e-mail (devis, facture) : destinataires proposés, message, signature,
@@ -64,7 +67,55 @@ watch(visible, async (open) => {
   }
 })
 
+// Recherche dans les contacts (nom, société ou adresse) pendant la saisie d'un destinataire
+const auth = useAuthStore()
+const canSearchContacts = computed(() => auth.canAny(['clients.view', 'clients.view.own']))
+const contactOptions = ref<ContactEmailOption[]>([])
+let searchSeq = 0
+
+async function searchContacts(event: AutoCompleteCompleteEvent, list: typeof to): Promise<void> {
+  const query = event.query.trim()
+  const seq = ++searchSeq
+  if (query.length < 2 || !canSearchContacts.value) {
+    contactOptions.value = []
+    return
+  }
+  try {
+    const result = await api.contacts.list({ search: query, per_page: 10 })
+    if (seq === searchSeq) contactOptions.value = contactEmailOptions(result.data, list.value)
+  } catch {
+    if (seq === searchSeq) contactOptions.value = []
+  }
+}
+
+function pickContact(event: AutoCompleteOptionSelectEvent, input: typeof toInput, list: typeof to): void {
+  const option = event.value as ContactEmailOption
+  list.value = [...new Set([...list.value, option.email])]
+  input.value = ''
+  error.value = null
+}
+
+/** Nom du contact pour une adresse choisie (suggestions du document ou recherche). */
+const knownNames = computed(() => {
+  const names = new Map<string, string>()
+  for (const s of draft.value?.suggestions ?? []) names.set(s.email.toLowerCase(), s.name)
+  for (const o of contactOptions.value) if (!names.has(o.email)) names.set(o.email, o.name)
+  return names
+})
+const remembered = ref(new Map<string, string>())
+watch(knownNames, (names) => {
+  for (const [email, name] of names) remembered.value.set(email, name)
+})
+const chipLabel = (email: string) => {
+  const name = remembered.value.get(email.toLowerCase())
+  return name ? `${name} <${email}>` : email
+}
+
 function addFrom(input: typeof toInput, list: typeof to): void {
+  if (typeof input.value !== 'string') {
+    input.value = ''
+    return
+  }
   const { valid, invalid } = parseEmails(input.value)
   list.value = [...new Set([...list.value, ...valid])]
   input.value = invalid.join(', ')
@@ -72,6 +123,14 @@ function addFrom(input: typeof toInput, list: typeof to): void {
 }
 
 const addTo = () => addFrom(toInput, to)
+/**
+ * Entrée : si un contact est en surbrillance, la liste l'a déjà ajouté (et a vidé la saisie) ;
+ * sinon on ajoute l'adresse tapée. Le formulaire n'est pas envoyé.
+ */
+function onEnter(event: KeyboardEvent, add: () => void): void {
+  event.preventDefault()
+  add()
+}
 const addCc = () => addFrom(ccInput, cc)
 
 function toggleSuggestion(email: string): void {
@@ -123,16 +182,57 @@ async function send(): Promise<void> {
       <div class="form-field form-field--full">
         <label for="e-to">Destinataires</label>
         <div class="chips">
-          <Chip v-for="email in to" :key="email" :label="email" removable @remove="to = to.filter((e) => e !== email)" />
+          <Chip v-for="email in to" :key="email" :label="chipLabel(email)" removable @remove="to = to.filter((e) => e !== email)" />
         </div>
-        <InputText id="e-to" v-model="toInput" placeholder="Autre adresse, puis Entrée (plusieurs : séparées par des virgules)" @keydown.enter.prevent="addTo" @blur="addTo" />
+        <AutoComplete
+          v-model="toInput"
+          input-id="e-to"
+          :suggestions="contactOptions"
+          option-label="email"
+          :delay="250"
+          :min-length="2"
+          fluid
+          placeholder="Nom d'un contact ou adresse, puis Entrée"
+          @complete="searchContacts($event, to)"
+          @option-select="pickContact($event, toInput, to)"
+          @keydown.enter="onEnter($event, addTo)"
+          @blur="addTo"
+        >
+          <template #option="{ option }">
+            <div class="contact-option">
+              <span>{{ option.name }} <span class="muted">&lt;{{ option.email }}&gt;</span></span>
+              <small v-if="option.detail" class="muted">{{ option.detail }}</small>
+            </div>
+          </template>
+          <template #empty><span class="muted">Aucun contact trouvé : tapez l'adresse complète.</span></template>
+        </AutoComplete>
       </div>
       <div class="form-field form-field--full">
         <label for="e-cc">Copie</label>
         <div class="chips">
-          <Chip v-for="email in cc" :key="email" :label="email" removable @remove="cc = cc.filter((e) => e !== email)" />
+          <Chip v-for="email in cc" :key="email" :label="chipLabel(email)" removable @remove="cc = cc.filter((e) => e !== email)" />
         </div>
-        <InputText id="e-cc" v-model="ccInput" placeholder="Facultatif" @keydown.enter.prevent="addCc" @blur="addCc" />
+        <AutoComplete
+          v-model="ccInput"
+          input-id="e-cc"
+          :suggestions="contactOptions"
+          option-label="email"
+          :delay="250"
+          :min-length="2"
+          fluid
+          placeholder="Facultatif — nom d'un contact ou adresse"
+          @complete="searchContacts($event, cc)"
+          @option-select="pickContact($event, ccInput, cc)"
+          @keydown.enter="onEnter($event, addCc)"
+          @blur="addCc"
+        >
+          <template #option="{ option }">
+            <div class="contact-option">
+              <span>{{ option.name }} <span class="muted">&lt;{{ option.email }}&gt;</span></span>
+              <small v-if="option.detail" class="muted">{{ option.detail }}</small>
+            </div>
+          </template>
+        </AutoComplete>
       </div>
       <div class="form-field form-field--full">
         <label for="e-subject">Objet</label>
@@ -170,6 +270,11 @@ async function send(): Promise<void> {
 </template>
 
 <style scoped>
+.contact-option {
+  display: flex;
+  flex-direction: column;
+}
+
 .signature {
   margin: 0.25rem 0 0;
   padding: 0.5rem 0.75rem;

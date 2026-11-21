@@ -86,3 +86,36 @@ export function parseEmails(input: string): { valid: string[]; invalid: string[]
   const ok = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
   return { valid: parts.filter(ok).map((e) => e.toLowerCase()), invalid: parts.filter((e) => !ok(e)) }
 }
+
+/** Adresse proposée à l'envoi d'un document, tirée des contacts. */
+export interface ContactEmailOption {
+  email: string
+  name: string
+  detail: string | null
+}
+
+/**
+ * Adresses e-mail des contacts trouvés (adresse principale et adresses secondaires), sans doublon et sans
+ * celles déjà choisies.
+ */
+export function contactEmailOptions(
+  contacts: Array<{ full_name: string; email: string | null; emails?: Array<{ address: string; label: string | null }>; client?: { name: string } | null; company?: string | null }>,
+  exclude: string[] = [],
+): ContactEmailOption[] {
+  const seen = new Set(exclude.map((e) => e.toLowerCase()))
+  const out: ContactEmailOption[] = []
+  for (const c of contacts) {
+    const company = c.client?.name ?? c.company ?? null
+    const addresses = [
+      ...(c.email ? [{ address: c.email, label: null as string | null }] : []),
+      ...(c.emails ?? []),
+    ]
+    for (const a of addresses) {
+      const email = a.address.trim().toLowerCase()
+      if (!email || seen.has(email)) continue
+      seen.add(email)
+      out.push({ email, name: c.full_name, detail: [company, a.label].filter(Boolean).join(' · ') || null })
+    }
+  }
+  return out
+}
