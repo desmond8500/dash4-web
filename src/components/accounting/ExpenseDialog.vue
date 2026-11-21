@@ -22,7 +22,7 @@ import { expenseStatusSeverity } from '@/utils/accounting'
  * Nouvelle dépense, ou fiche d'une dépense : modifiable tant qu'elle est à valider (ou par le comptable),
  * avec les boutons Valider / Refuser / Rembourser pour qui décide.
  */
-const props = defineProps<{ expense?: Expense | null; spaceId?: number | null; projectId?: number | null }>()
+const props = defineProps<{ expense?: Expense | null; spaceId?: number | null; projectId?: number | null; vehicleId?: number | null }>()
 const visible = defineModel<boolean>('visible', { required: true })
 const emit = defineEmits<{ saved: [expense: Expense]; removed: [id: number] }>()
 const auth = useAuthStore()
@@ -30,6 +30,7 @@ const auth = useAuthStore()
 const categories = ref<ExpenseCategory[]>([])
 const spaces = ref<ExpenseSpace[]>([])
 const projects = ref<Project[]>([])
+const vehicles = ref<Array<{ id: number; name: string }>>([])
 const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const error = ref<string | null>(null)
@@ -44,6 +45,7 @@ const form = ref({
   expense_category_id: null as number | null,
   expense_space_id: null as number | null,
   project_id: null as number | null,
+  vehicle_id: null as number | null,
   payment_method: 'cash' as PaymentMethod | null,
   advanced: false,
   description: '',
@@ -78,16 +80,19 @@ watch(visible, async (open) => {
     expense_category_id: e?.expense_category_id ?? null,
     expense_space_id: e?.expense_space_id ?? props.spaceId ?? null,
     project_id: e?.project_id ?? props.projectId ?? null,
+    vehicle_id: e?.vehicle_id ?? props.vehicleId ?? null,
     payment_method: e?.payment_method?.value ?? 'cash',
     advanced: e?.advanced ?? false,
     description: e?.description ?? '',
   }
   article.value = e?.article ?? null
-  const [c, s, p] = await Promise.allSettled([
+  const [c, s, p, v] = await Promise.allSettled([
     api.expenseCategories.list(),
     api.expenseSpaces.list(),
     auth.canAny(['projects.view', 'projects.view.own']) ? api.projects.list({ per_page: 100 }) : Promise.reject(new Error()),
+    auth.canAny(['vehicles.view', 'vehicles.view.own']) ? api.vehicles.list() : Promise.reject(new Error()),
   ])
+  vehicles.value = v.status === 'fulfilled' ? v.value.map((x) => ({ id: x.id, name: x.plate ? `${x.name} (${x.plate})` : x.name })) : []
   categories.value = c.status === 'fulfilled' ? c.value : []
   spaces.value = s.status === 'fulfilled' ? s.value : []
   projects.value = p.status === 'fulfilled' ? p.value.data : []
@@ -128,6 +133,7 @@ function save(): void {
     expense_category_id: f.expense_category_id,
     expense_space_id: f.expense_space_id,
     project_id: f.project_id,
+    vehicle_id: f.vehicle_id,
     payment_method: f.payment_method,
     advanced: f.advanced,
     description: f.description.trim() || null,
@@ -211,6 +217,10 @@ async function openReceipt(): Promise<void> {
       <div v-if="projects.length" class="form-field">
         <label for="x-project">Projet</label>
         <Select id="x-project" v-model="form.project_id" :options="[{ id: null, name: 'Aucun' }, ...projects]" option-label="name" option-value="id" filter :disabled="!editable" />
+      </div>
+      <div v-if="vehicles.length" class="form-field">
+        <label for="x-vehicle">Véhicule</label>
+        <Select id="x-vehicle" v-model="form.vehicle_id" :options="[{ id: null, name: 'Aucun' }, ...vehicles]" option-label="name" option-value="id" filter :disabled="!editable" />
       </div>
       <div v-if="auth.can('stock.view')" class="form-field form-field--full">
         <label for="x-article">Article du stock (facultatif)</label>

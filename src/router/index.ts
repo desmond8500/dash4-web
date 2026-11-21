@@ -215,6 +215,19 @@ export const router = createRouter({
           meta: { title: 'Tâche', permissions: ['tasks.view', 'tasks.view.own'] },
         },
         {
+          path: 'parc',
+          name: 'vehicles',
+          component: () => import('@/views/VehiclesView.vue'),
+          meta: { title: 'Parc automobile', permissions: ['vehicles.view', 'vehicles.view.own'] },
+        },
+        {
+          path: 'parc/:id(\\d+)',
+          name: 'vehicle',
+          component: () => import('@/views/VehicleDetailView.vue'),
+          props: true,
+          meta: { title: 'Véhicule', permissions: ['vehicles.view', 'vehicles.view.own'] },
+        },
+        {
           path: 'contrats',
           name: 'contracts',
           component: () => import('@/views/ContractsView.vue'),

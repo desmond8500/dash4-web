@@ -40,6 +40,7 @@ export const MENU: MenuEntry[] = [
   { label: 'Échéancier', icon: 'pi pi-calendar-clock', to: '/echeancier', permissions: ['invoices.view'] },
   { label: 'Contrats', icon: 'pi pi-file-check', to: '/contrats', permissions: ['contracts.view'] },
   { label: 'Stock', icon: 'pi pi-box', to: '/stock', permissions: ['stock.view'] },
+  { label: 'Parc automobile', icon: 'pi pi-car', to: '/parc', permissions: ['vehicles.view', 'vehicles.view.own'] },
   { label: 'Achats', icon: 'pi pi-shopping-cart', to: '/achats', permissions: ['purchases.view', 'purchases.view.own'] },
   { label: 'Dépenses', icon: 'pi pi-wallet', to: '/depenses', permissions: ['accounting.view', 'accounting.view.own'] },
   // Les exports comptables demandent aussi de voir les prix (le magasinier exporte seulement le stock)
