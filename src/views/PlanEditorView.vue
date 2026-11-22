@@ -38,8 +38,9 @@ import type { Equipment, Plan, PlanIcon, PlanMarker, PlanMarkerPayload, Site } f
 import { api } from '@/services/api'
 import { usePlanIconsStore } from '@/stores/planIcons'
 import { matchesSearch } from '@/utils/listSearch'
-import { renderPlan } from '@/utils/planRender'
+import { legendLayout, legendPanelWidth, legendPlacement, legendScale, renderPlan, renderSize } from '@/utils/planRender'
 import PlanIconGlyph from '@/components/plans/PlanIconGlyph.vue'
+import PlanLegendBox from '@/components/plans/PlanLegendBox.vue'
 
 /**
  * Éditeur de plans d'un chantier : repères d'équipements avec icônes (taille, rotation, couleur),
@@ -94,6 +95,68 @@ const layers = computed(() => planLayers(markers.value, systems.value, hidden.va
 const selected = computed(() => markers.value.find((m) => m.id === selectedId.value) ?? null)
 const legend = computed(() => planLegend(shownMarkers.value, iconsStore.icons, equipmentName))
 const legendGroups = computed(() => groupLegend(legend.value))
+
+// --- Légende : place et taille, à l'écran comme dans l'aperçu des PDF -----------------------
+const legendShown = computed(() => !!current.value?.settings.legend && legend.value.length > 0)
+const legendPos = computed(() => current.value?.settings.legend_position ?? 'below')
+const legendSize = computed(() => current.value?.settings.legend_scale ?? 1)
+/** Largeur du plan dans l'aperçu (px) et largeur de la colonne de légende. */
+const planRenderWidth = computed(() => (base.value ? renderSize(base.value.img.naturalWidth, base.value.img.naturalHeight).width : 1600))
+const planRenderHeight = computed(() => (base.value ? renderSize(base.value.img.naturalWidth, base.value.img.naturalHeight).height : 1000))
+const panelRenderWidth = computed(() => legendPanelWidth(planRenderWidth.value, legendSize.value))
+const belowColumns = computed(() => legendLayout(legendGroups.value.map((g) => g.entries.length), planRenderWidth.value, legendScale(planRenderWidth.value, legendSize.value)).columns)
+/** Largeur affichée du plan, suivie pour garder les proportions de la légende. */
+const planPx = ref(0)
+let resizeObserver: ResizeObserver | undefined
+watch(stage, (el) => {
+  resizeObserver?.disconnect()
+  if (!el) return
+  resizeObserver = new ResizeObserver(([entry]) => (planPx.value = entry!.contentRect.width))
+  resizeObserver.observe(el)
+})
+const legendUnit = computed(() => (planPx.value / planRenderWidth.value) * legendScale(planRenderWidth.value, legendSize.value))
+/** Légende posée sur le plan : même calcul que l'aperçu (gardée dans le plan). */
+const overlayStyle = computed(() => {
+  const s = current.value!.settings
+  const place = legendPlacement(legendGroups.value.map((g) => g.entries.length), { width: planRenderWidth.value, height: planRenderHeight.value }, 'overlay', legendSize.value, {
+    x: s.legend_x,
+    y: s.legend_y,
+  })
+  return {
+    left: `${(place.x / planRenderWidth.value) * 100}%`,
+    top: `${(place.y / planRenderHeight.value) * 100}%`,
+    width: `${(panelRenderWidth.value / planRenderWidth.value) * 100}%`,
+  }
+})
+
+let legendDrag: { startX: number; startY: number; x: number; y: number } | null = null
+function startLegendDrag(e: PointerEvent): void {
+  if (!canEdit.value || e.button !== 0 || !current.value) return
+  legendDrag = { startX: e.clientX, startY: e.clientY, x: current.value.settings.legend_x, y: current.value.settings.legend_y }
+  window.addEventListener('pointermove', onLegendMove)
+  window.addEventListener('pointerup', onLegendUp, { once: true })
+}
+function onLegendMove(e: PointerEvent): void {
+  if (!legendDrag || !stage.value || !current.value) return
+  const rect = stage.value.getBoundingClientRect()
+  const panel = panelRenderWidth.value / planRenderWidth.value
+  current.value.settings.legend_x = clampPosition(Math.min(1 - panel, legendDrag.x + (e.clientX - legendDrag.startX) / rect.width))
+  current.value.settings.legend_y = clampPosition(legendDrag.y + (e.clientY - legendDrag.startY) / rect.height)
+}
+function onLegendUp(): void {
+  window.removeEventListener('pointermove', onLegendMove)
+  if (!legendDrag || !current.value) return
+  legendDrag = null
+  // Ramène la position enregistrée dans le plan (comme à l'affichage)
+  const s = current.value.settings
+  const place = legendPlacement(legendGroups.value.map((g) => g.entries.length), { width: planRenderWidth.value, height: planRenderHeight.value }, 'overlay', legendSize.value, { x: s.legend_x, y: s.legend_y })
+  updateSettings({ legend_x: clampPosition(place.x / planRenderWidth.value), legend_y: clampPosition(place.y / planRenderHeight.value) })
+}
+const LEGEND_POSITIONS = [
+  { value: 'below', label: 'Sous le plan' },
+  { value: 'right', label: 'À droite du plan' },
+  { value: 'overlay', label: 'Sur le plan (à déplacer)' },
+] as const
 const labelOf = (m: PlanMarker) => (current.value?.settings.labels !== false && m.show_label ? (m.label ?? equipmentName(m.equipment_id)) : null)
 
 const paletteEquipment = computed(() =>
@@ -127,6 +190,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  resizeObserver?.disconnect()
   if (renderTimer) {
     clearTimeout(renderTimer)
     void doRender()
@@ -247,6 +311,9 @@ async function doRender(): Promise<void> {
       icons: iconById.value,
       images: iconsStore.images,
       legend: plan.settings.legend ? legend.value : null,
+      legendPosition: plan.settings.legend_position,
+      legendSize: plan.settings.legend_scale,
+      legendAt: { x: plan.settings.legend_x, y: plan.settings.legend_y },
       labelOf,
       title: plan.name,
     })
@@ -621,6 +688,33 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
         <section v-if="current">
           <h3>Affichage</h3>
           <label class="toggle"><ToggleSwitch :model-value="current.settings.legend" @update:model-value="(v) => updateSettings({ legend: v })" /> Légende</label>
+          <template v-if="current.settings.legend">
+            <div class="form-field">
+              <label for="legend-pos">Place de la légende</label>
+              <Select
+                input-id="legend-pos"
+                :model-value="current.settings.legend_position"
+                :options="[...LEGEND_POSITIONS]"
+                option-label="label"
+                option-value="value"
+                :disabled="!canEdit"
+                @update:model-value="(v) => updateSettings({ legend_position: v })"
+              />
+            </div>
+            <div class="form-field">
+              <label>Taille de la légende : {{ Math.round(current.settings.legend_scale * 100) }} %</label>
+              <Slider
+                :model-value="current.settings.legend_scale * 100"
+                :min="50"
+                :max="250"
+                :step="10"
+                :disabled="!canEdit"
+                @update:model-value="(v) => (current!.settings.legend_scale = (Array.isArray(v) ? v[0]! : v) / 100)"
+                @slideend="updateSettings({ legend_scale: current!.settings.legend_scale })"
+              />
+            </div>
+            <p v-if="current.settings.legend_position === 'overlay'" class="muted small">Glissez la légende sur le plan pour la placer.</p>
+          </template>
           <label class="toggle"><ToggleSwitch :model-value="current.settings.labels" @update:model-value="(v) => updateSettings({ labels: v })" /> Noms des repères</label>
           <p class="muted small">Ce qui est affiché ici (calques, légende, noms) est repris dans le PDF du plan et le DOE.</p>
         </section>
@@ -631,46 +725,58 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
         <div v-else-if="!current" class="center muted">Choisissez ou envoyez un plan.</div>
         <div
           v-else-if="base"
-          ref="stage"
           class="stage"
-          :class="{ placing: !!tool }"
-          :style="{ width: `${zoom * 100}%` }"
-          @pointerdown="onStagePointerDown"
-          @contextmenu.prevent="openMenu($event, null)"
-          @dragover.prevent
-          @drop.prevent="onDrop"
+          :class="[`legend-${legendPos}`, { placing: !!tool }]"
+          :style="{ width: `${zoom * 100}%`, ...(legendPos === 'right' && legendShown ? { gridTemplateColumns: `${planRenderWidth}fr ${panelRenderWidth}fr` } : {}) }"
         >
-          <img :src="base.url" :alt="current.name" draggable="false" />
           <div
-            v-for="m in shownMarkers"
-            :key="m.id"
-            class="marker"
-            :class="{ selected: m.id === selectedId, editable: canEdit }"
-            :style="{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `${m.size * 100}%` }"
-            :title="m.label ?? equipmentName(m.equipment_id) ?? 'Repère'"
-            @pointerdown.stop="startDrag($event, m, 'move')"
-            @contextmenu.prevent.stop="openMenu($event, m)"
+            ref="stage"
+            class="plan-area"
+            @pointerdown="onStagePointerDown"
+            @contextmenu.prevent="openMenu($event, null)"
+            @dragover.prevent
+            @drop.prevent="onDrop"
           >
-            <div class="glyph" :style="{ transform: `rotate(${m.rotation}deg)` }">
-              <PlanIconGlyph :icon="iconOf(m)" :color="markerColor(m, iconOf(m))" />
-            </div>
-            <span v-if="labelOf(m)" class="label">{{ labelOf(m) }}</span>
-            <template v-if="m.id === selectedId && canEdit">
-              <span class="handle resize" title="Redimensionner" @pointerdown.stop="startDrag($event, m, 'resize')" />
-              <span class="handle rotate" title="Pivoter (Maj : degré par degré)" @pointerdown.stop="startDrag($event, m, 'rotate')" />
-            </template>
-          </div>
-          <div v-if="current.settings.legend && legend.length" class="legend" @pointerdown.stop>
-            <strong>Légende</strong>
-            <template v-for="group in legendGroups" :key="group.category">
-              <div class="legend-cat">{{ group.category }}</div>
-              <div v-for="entry in group.entries" :key="entry.key" class="legend-row">
-                <span class="legend-icon"><PlanIconGlyph :icon="entry.icon" :color="entry.color" /></span>
-                <span class="grow">{{ entry.name }}</span>
-                <span class="muted">{{ entry.count }}</span>
+            <img :src="base.url" :alt="current.name" draggable="false" />
+            <div
+              v-for="m in shownMarkers"
+              :key="m.id"
+              class="marker"
+              :class="{ selected: m.id === selectedId, editable: canEdit }"
+              :style="{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, width: `${m.size * 100}%` }"
+              :title="m.label ?? equipmentName(m.equipment_id) ?? 'Repère'"
+              @pointerdown.stop="startDrag($event, m, 'move')"
+              @contextmenu.prevent.stop="openMenu($event, m)"
+            >
+              <div class="glyph" :style="{ transform: `rotate(${m.rotation}deg)` }">
+                <PlanIconGlyph :icon="iconOf(m)" :color="markerColor(m, iconOf(m))" />
               </div>
-            </template>
+              <span v-if="labelOf(m)" class="label">{{ labelOf(m) }}</span>
+              <template v-if="m.id === selectedId && canEdit">
+                <span class="handle resize" title="Redimensionner" @pointerdown.stop="startDrag($event, m, 'resize')" />
+                <span class="handle rotate" title="Pivoter (Maj : degré par degré)" @pointerdown.stop="startDrag($event, m, 'rotate')" />
+              </template>
+            </div>
+            <div
+              v-if="legendShown && legendPos === 'overlay'"
+              class="legend-overlay"
+              :class="{ movable: canEdit }"
+              :style="overlayStyle"
+              title="Glisser pour déplacer la légende"
+              @pointerdown.stop="startLegendDrag"
+              @contextmenu.stop.prevent
+            >
+              <PlanLegendBox :groups="legendGroups" :unit="legendUnit" :title="current.name" framed />
+            </div>
           </div>
+          <PlanLegendBox
+            v-if="legendShown && legendPos !== 'overlay'"
+            class="legend-side"
+            :groups="legendGroups"
+            :unit="legendUnit"
+            :columns="legendPos === 'below' ? belowColumns : 1"
+            :title="current.name"
+          />
         </div>
       </main>
 
@@ -994,15 +1100,22 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
   height: 100%;
 }
 .stage {
-  position: relative;
   margin: 0 auto;
   touch-action: none;
   user-select: none;
+  background: #fff;
 }
-.stage.placing {
+.stage.legend-right {
+  display: grid;
+  align-items: start;
+}
+.plan-area {
+  position: relative;
+}
+.stage.placing .plan-area {
   cursor: crosshair;
 }
-.stage > img {
+.plan-area > img {
   display: block;
   width: 100%;
   height: auto;
@@ -1058,37 +1171,15 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
   transform: translateX(-50%);
   cursor: grab;
 }
-.legend {
+.legend-overlay {
   position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  background: rgba(255, 255, 255, 0.95);
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  max-width: 45%;
-  max-height: 60%;
-  overflow: auto;
+  z-index: 3;
 }
-.legend-cat {
-  margin-top: 0.375rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #4b5563;
+.legend-overlay.movable {
+  cursor: move;
 }
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-}
-.legend-icon {
-  width: 18px;
-  height: 18px;
-  flex: none;
+.legend-side {
+  min-width: 0;
 }
 .props {
   display: flex;
