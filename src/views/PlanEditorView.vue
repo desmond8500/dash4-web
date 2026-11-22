@@ -23,6 +23,8 @@ import type { MenuItem } from 'primevue/menuitem'
 import {
   ApiError,
   angleFrom,
+  groupLegend,
+  PLAN_ICON_CATEGORIES,
   clampPosition,
   clampSize,
   layerKey,
@@ -91,6 +93,7 @@ const shownMarkers = computed(() => visibleMarkers(pageMarkers.value, hidden.val
 const layers = computed(() => planLayers(markers.value, systems.value, hidden.value))
 const selected = computed(() => markers.value.find((m) => m.id === selectedId.value) ?? null)
 const legend = computed(() => planLegend(shownMarkers.value, iconsStore.icons, equipmentName))
+const legendGroups = computed(() => groupLegend(legend.value))
 const labelOf = (m: PlanMarker) => (current.value?.settings.labels !== false && m.show_label ? (m.label ?? equipmentName(m.equipment_id)) : null)
 
 const paletteEquipment = computed(() =>
@@ -104,8 +107,9 @@ const paletteIcons = computed(() => {
     const key = icon.category || 'Sans catégorie'
     groups.set(key, [...(groups.get(key) ?? []), icon])
   }
-  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'))
+  return [...groups.entries()].sort(([a], [b]) => categoryRank(a) - categoryRank(b) || a.localeCompare(b, 'fr'))
 })
+const categoryRank = (c: string) => (PLAN_ICON_CATEGORIES.includes(c) ? PLAN_ICON_CATEGORIES.indexOf(c) : 100)
 const layerOptions = computed(() => [{ id: null as number | null, name: 'Sans système' }, ...systems.value.map((s) => ({ id: s.id as number | null, name: s.name }))])
 
 // --- Chargement ---------------------------------------------------------------------------
@@ -658,11 +662,14 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
           </div>
           <div v-if="current.settings.legend && legend.length" class="legend" @pointerdown.stop>
             <strong>Légende</strong>
-            <div v-for="entry in legend" :key="entry.key" class="legend-row">
-              <span class="legend-icon"><PlanIconGlyph :icon="entry.icon" :color="entry.color" /></span>
-              <span>{{ entry.name }}</span>
-              <span class="muted">× {{ entry.count }}</span>
-            </div>
+            <template v-for="group in legendGroups" :key="group.category">
+              <div class="legend-cat">{{ group.category }}</div>
+              <div v-for="entry in group.entries" :key="entry.key" class="legend-row">
+                <span class="legend-icon"><PlanIconGlyph :icon="entry.icon" :color="entry.color" /></span>
+                <span class="grow">{{ entry.name }}</span>
+                <span class="muted">{{ entry.count }}</span>
+              </div>
+            </template>
           </div>
         </div>
       </main>
@@ -1064,6 +1071,13 @@ const renderLabel = computed(() => ({ idle: '', pending: 'Aperçu PDF à mettre 
   max-width: 45%;
   max-height: 60%;
   overflow: auto;
+}
+.legend-cat {
+  margin-top: 0.375rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #4b5563;
 }
 .legend-row {
   display: flex;

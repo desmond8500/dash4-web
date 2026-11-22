@@ -10,7 +10,8 @@ import InputIcon from 'primevue/inputicon'
 import Message from 'primevue/message'
 import SelectButton from 'primevue/selectbutton'
 import { useConfirm } from 'primevue/useconfirm'
-import { ApiError, PLAN_SYMBOLS } from '@dash4/shared'
+import { useToast } from 'primevue/usetoast'
+import { ApiError, PLAN_ICON_CATEGORIES, PLAN_SYMBOLS } from '@dash4/shared'
 import type { PlanIcon } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -26,13 +27,15 @@ const auth = useAuthStore()
 const store = usePlanIconsStore()
 const router = useRouter()
 const confirm = useConfirm()
+const toast = useToast()
+const installing = ref(false)
 
 const COLORS = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb', '#7c3aed', '#db2777', '#111827']
 const canManage = computed(() => auth.canAny(['stock.update', 'sites.create']))
 const search = ref('')
 const dialog = ref(false)
 const edited = ref<PlanIcon | null>(null)
-const form = ref({ name: '', category: '', mode: 'symbol' as 'symbol' | 'image', symbol: 'dot', color: '#e11d48' as string | null })
+const form = ref({ name: '', category: '', mode: 'symbol' as 'symbol' | 'image', symbol: 'dot', code: '', color: '#e11d48' as string | null, textColor: '#ffffff', secondary: null as string | null })
 const file = ref<File | null>(null)
 const preview = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -49,13 +52,44 @@ const groups = computed(() => {
     const key = icon.category || 'Sans catégorie'
     map.set(key, [...(map.get(key) ?? []), icon])
   }
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'fr'))
+  const rank = (c: string) => (PLAN_ICON_CATEGORIES.includes(c) ? PLAN_ICON_CATEGORIES.indexOf(c) : 100)
+  return [...map.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b, 'fr'))
 })
+/** Aperçu de l'icône en cours de saisie. */
+const draft = computed<PlanIcon>(() => ({
+  id: 0, name: form.value.name, category: null, symbol: form.value.symbol, code: form.value.code.trim().toUpperCase() || null, color: form.value.color,
+  text_color: form.value.textColor, secondary_color: form.value.secondary, file_path: null, mime: null, articles_count: null, updated_at: null,
+}))
+
+/** Ajoute la bibliothèque standard (légende de l'entreprise) ; « reset » remet les icônes standard modifiées à neuf. */
+function install(reset: boolean): void {
+  const run = async () => {
+    installing.value = true
+    try {
+      const r = await api.planIcons.install(reset)
+      await store.load(true)
+      toast.add({ severity: 'success', summary: 'Bibliothèque standard', detail: r.message, life: 4000 })
+    } catch (e) {
+      toast.add({ severity: 'error', summary: 'Refusé', detail: (e as Error).message, life: 5000 })
+    } finally {
+      installing.value = false
+    }
+  }
+  if (!reset) return void run()
+  confirm.require({
+    header: 'Remettre la bibliothèque standard à neuf',
+    message: 'Les icônes standard que vous avez modifiées (nom, code, couleurs, image) reprennent leur forme d\'origine. Vos propres icônes ne changent pas.',
+    acceptProps: { label: 'Remettre à neuf' },
+    rejectProps: { label: 'Annuler', severity: 'secondary', text: true },
+    accept: () => void run(),
+  })
+}
 
 function openDialog(icon: PlanIcon | null): void {
   edited.value = icon
   form.value = {
-    name: icon?.name ?? '', category: icon?.category ?? '', mode: icon?.file_path ? 'image' : 'symbol', symbol: icon?.symbol ?? 'dot', color: icon?.color ?? (icon ? null : '#e11d48'),
+    name: icon?.name ?? '', category: icon?.category ?? '', mode: icon?.file_path ? 'image' : 'symbol', symbol: icon?.symbol ?? 'dot', code: icon?.code ?? '',
+    color: icon?.color ?? (icon ? null : '#e11d48'), textColor: icon?.text_color ?? '#ffffff', secondary: icon?.secondary_color ?? null,
   }
   file.value = null
   if (preview.value) URL.revokeObjectURL(preview.value)
@@ -78,7 +112,10 @@ async function save(): Promise<void> {
   if (!f.name.trim()) return void (error.value = "Donnez un nom à l'icône.")
   const image = f.mode === 'image' ? file.value : null
   if (f.mode === 'image' && !image && !edited.value?.file_path) return void (error.value = 'Choisissez une image (PNG, SVG, WebP, 1 Mo au plus).')
-  const payload = { name: f.name.trim(), category: f.category.trim() || null, color: f.color, ...(f.mode === 'symbol' ? { symbol: f.symbol } : {}) }
+  const payload = {
+    name: f.name.trim(), category: f.category.trim() || null, color: f.color,
+    ...(f.mode === 'symbol' ? { symbol: f.symbol, code: f.code.trim().toUpperCase() || null, text_color: f.code.trim() ? f.textColor : null, secondary_color: f.secondary } : {}),
+  }
   saving.value = true
   error.value = null
   try {
@@ -118,10 +155,22 @@ function completeCategory(e: { query: string }): void {
     <div class="page-header">
       <Button icon="pi pi-arrow-left" text rounded aria-label="Retour" @click="router.back()" />
       <h1>Icônes des plans</h1>
-      <Button v-if="canManage" label="Nouvelle icône" icon="pi pi-plus" @click="openDialog(null)" />
+      <template v-if="canManage">
+        <Button
+          :label="store.icons.some((i) => i.slug) ? 'Compléter la bibliothèque standard' : 'Installer la bibliothèque standard'"
+          icon="pi pi-download"
+          severity="secondary"
+          :loading="installing"
+          @click="install(false)"
+        />
+        <Button v-if="store.icons.some((i) => i.slug)" icon="pi pi-replay" text rounded severity="secondary" title="Remettre les icônes standard à neuf" aria-label="Remettre les icônes standard à neuf" @click="install(true)" />
+        <Button label="Nouvelle icône" icon="pi pi-plus" @click="openDialog(null)" />
+      </template>
     </div>
     <p class="muted">
-      Choisissez l'icône d'un article dans sa fiche : tous ses équipements la prennent sur les plans. Un symbole intégré se colore ; une image s'affiche telle quelle.
+      Choisissez l'icône d'un article dans sa fiche : tous ses équipements la prennent sur les plans. Un symbole intégré se colore et peut porter un code
+      (DOF, CDI, NC2…) comme sur les légendes de plans ; une image s'affiche telle quelle. La bibliothèque standard reprend la légende de l'entreprise
+      (incendie, extincteurs, évacuation, vidéo, contrôle d'accès, intrusion, RIA, réseau).
     </p>
     <IconField class="search">
       <InputIcon class="pi pi-search" />
@@ -152,6 +201,14 @@ function completeCategory(e: { query: string }): void {
           <SelectButton v-model="form.mode" :options="[{ v: 'symbol', l: 'Symbole intégré' }, { v: 'image', l: 'Image' }]" option-label="l" option-value="v" :allow-empty="false" />
         </div>
         <template v-if="form.mode === 'symbol'">
+          <div class="form-field">
+            <label for="ic-code">Code dans la forme (facultatif)</label>
+            <InputText id="ic-code" v-model="form.code" maxlength="6" placeholder="DOF, CDI, NC2…" />
+          </div>
+          <div class="form-field preview-field">
+            <label>Aperçu</label>
+            <span class="glyph big-glyph"><PlanIconGlyph :icon="draft" :color="form.color ?? '#e11d48'" /></span>
+          </div>
           <div class="form-field form-field--full">
             <label>Symbole</label>
             <div class="symbols">
@@ -177,6 +234,22 @@ function completeCategory(e: { query: string }): void {
             <input v-model="form.color" type="color" class="swatch picker" aria-label="Autre couleur" />
           </div>
         </div>
+        <template v-if="form.mode === 'symbol'">
+          <div class="form-field">
+            <label>Seconde couleur (moitié basse, ex. extincteurs)</label>
+            <div class="swatches">
+              <button type="button" class="swatch none" :class="{ active: !form.secondary }" title="Aucune" aria-label="Aucune" @click="form.secondary = null">∅</button>
+              <button v-for="c in ['#111827', '#1d4ed8', '#facc15', '#16a34a']" :key="c" type="button" class="swatch" :class="{ active: form.secondary === c }" :style="{ background: c }" :aria-label="c" @click="form.secondary = c" />
+              <input :value="form.secondary ?? '#111827'" type="color" class="swatch picker" aria-label="Autre seconde couleur" @input="(e) => (form.secondary = (e.target as HTMLInputElement).value)" />
+            </div>
+          </div>
+          <div v-if="form.code.trim()" class="form-field">
+            <label>Couleur du code</label>
+            <div class="swatches">
+              <button v-for="c in ['#ffffff', '#111827']" :key="c" type="button" class="swatch outline" :class="{ active: form.textColor === c }" :style="{ background: c }" :aria-label="c" @click="form.textColor = c" />
+            </div>
+          </div>
+        </template>
       </form>
       <template #footer>
         <Button v-if="edited" label="Supprimer" icon="pi pi-trash" text severity="danger" class="left" @click="remove(edited!)" />
@@ -271,6 +344,21 @@ function completeCategory(e: { query: string }): void {
 .swatch.picker {
   background: none;
   border: 1px solid var(--p-content-border-color);
+}
+.big-glyph {
+  width: 48px;
+  height: 48px;
+}
+.swatch.none {
+  background: var(--p-content-hover-background);
+  color: var(--p-text-color);
+  font-size: 0.75rem;
+}
+.swatch.outline {
+  border-color: var(--p-content-border-color);
+}
+.swatch.outline.active {
+  border-color: var(--p-primary-color);
 }
 .left {
   margin-right: auto;

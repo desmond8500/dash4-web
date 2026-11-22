@@ -1,13 +1,36 @@
-import { markerColor, planSymbol, type LegendEntry, type PlanIcon, type PlanMarker } from '@dash4/shared'
+import { codeFontSize, groupLegend, markerColor, planSymbol, type LegendEntry, type PlanIcon, type PlanMarker } from '@dash4/shared'
 
-/** Mise en page de la légende sous le plan : colonnes, hauteur d'une ligne et hauteur totale (en px). */
-export function legendLayout(count: number, width: number): { columns: number; rowHeight: number; height: number; padding: number; iconSize: number } {
+/**
+ * Mise en page de la légende sous le plan, comme une légende de plan d'exécution : un bloc par catégorie
+ * (titre puis une ligne par icône avec la quantité), blocs rangés en colonnes. Tailles en px.
+ */
+export function legendLayout(blockSizes: number[], width: number): {
+  columns: number
+  rowHeight: number
+  headerHeight: number
+  padding: number
+  iconSize: number
+  colWidth: number
+  blocks: Array<{ x: number; y: number }>
+  height: number
+} {
   const scale = Math.max(1, width / 1600)
   const padding = Math.round(24 * scale)
-  const rowHeight = Math.round(34 * scale)
+  const rowHeight = Math.round(30 * scale)
+  const headerHeight = Math.round(36 * scale)
+  const titleHeight = Math.round(40 * scale)
   const columns = Math.max(1, Math.min(4, Math.floor((width - padding * 2) / (360 * scale))))
-  const rows = Math.ceil(count / columns)
-  return { columns, rowHeight, height: count ? padding * 2 + Math.round(30 * scale) + rows * rowHeight : 0, padding, iconSize: Math.round(24 * scale) }
+  const colWidth = (width - padding * 2) / columns
+  const blocks: Array<{ x: number; y: number }> = []
+  // Chaque bloc va dans la colonne la moins haute
+  const heights = new Array<number>(columns).fill(0)
+  for (const rows of blockSizes) {
+    const col = heights.indexOf(Math.min(...heights))
+    blocks.push({ x: padding + col * colWidth, y: padding + titleHeight + heights[col]! })
+    heights[col]! += headerHeight + rows * rowHeight + Math.round(12 * scale)
+  }
+  const height = blockSizes.length ? padding * 2 + titleHeight + Math.max(...heights) : 0
+  return { columns, rowHeight, headerHeight, padding, iconSize: Math.round(22 * scale), colWidth, blocks, height }
 }
 
 /** Taille de rendu : la largeur d'origine, ramenée à `maxWidth` au plus. */
@@ -24,7 +47,8 @@ function drawGlyph(ctx: CanvasRenderingContext2D, icon: PlanIcon | null, color: 
     ctx.drawImage(image, -w / 2, -h / 2, w, h)
     return
   }
-  const path = new Path2D(planSymbol(icon?.symbol).path)
+  const symbol = icon?.symbol
+  const path = new Path2D(planSymbol(symbol).path)
   ctx.save()
   ctx.scale(size / 26, size / 26)
   ctx.translate(-12, -12)
@@ -34,6 +58,24 @@ function drawGlyph(ctx: CanvasRenderingContext2D, icon: PlanIcon | null, color: 
   ctx.stroke(path)
   ctx.fillStyle = color
   ctx.fill(path, 'evenodd')
+  if (icon?.secondary_color) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(-1, 12, 26, 13)
+    ctx.clip()
+    ctx.fillStyle = icon.secondary_color
+    ctx.fill(path, 'evenodd')
+    ctx.restore()
+  }
+  const code = icon?.code?.trim()
+  if (code) {
+    const fs = codeFontSize(code, symbol)
+    ctx.font = `700 ${fs}px Arial, Helvetica, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = icon?.text_color ?? '#ffffff'
+    ctx.fillText(code, 12, 12 + fs * 0.36)
+  }
   ctx.restore()
 }
 
@@ -64,7 +106,8 @@ export interface RenderOptions {
 /** Dessine le plan, ses repères (taille, rotation, couleur, nom) et la légende ; renvoie une image JPEG. */
 export async function renderPlan(o: RenderOptions): Promise<{ blob: Blob; width: number; height: number }> {
   const { width, height } = renderSize(o.base.naturalWidth, o.base.naturalHeight, o.maxWidth)
-  const layout = legendLayout(o.legend?.length ?? 0, width)
+  const groups = o.legend?.length ? groupLegend(o.legend) : []
+  const layout = legendLayout(groups.map((g) => g.entries.length), width)
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height + layout.height
@@ -87,32 +130,63 @@ export async function renderPlan(o: RenderOptions): Promise<{ blob: Blob; width:
     if (label) drawLabel(ctx, label, cx, cy + size / 2 + 2, Math.max(11, Math.round(size * 0.38)))
   }
 
-  if (o.legend?.length) {
+  if (groups.length) {
     const top = height
-    ctx.fillStyle = '#f9fafb'
+    const line = Math.max(1, Math.round(layout.rowHeight / 20))
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, top, width, layout.height)
-    ctx.fillStyle = '#e5e7eb'
-    ctx.fillRect(0, top, width, Math.max(1, Math.round(layout.rowHeight / 20)))
     ctx.fillStyle = '#111827'
-    ctx.font = `700 ${Math.round(layout.rowHeight * 0.6)}px system-ui, sans-serif`
+    ctx.fillRect(0, top, width, line * 2)
+    ctx.font = `700 ${Math.round(layout.rowHeight * 0.75)}px system-ui, sans-serif`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
-    ctx.fillText(o.title ? `Légende — ${o.title}` : 'Légende', layout.padding, top + layout.padding)
-    const colWidth = (width - layout.padding * 2) / layout.columns
-    o.legend.forEach((entry, i) => {
-      const col = i % layout.columns
-      const row = Math.floor(i / layout.columns)
-      const x = layout.padding + col * colWidth
-      const y = top + layout.padding + layout.rowHeight * 1.1 + row * layout.rowHeight
-      ctx.save()
-      ctx.translate(x + layout.iconSize / 2, y + layout.iconSize / 2)
-      drawGlyph(ctx, entry.icon, entry.color, layout.iconSize, entry.icon ? o.images.get(entry.icon.id) : undefined)
-      ctx.restore()
+    ctx.fillText(o.title ? `LÉGENDE — ${o.title}` : 'LÉGENDE', layout.padding, top + layout.padding)
+    groups.forEach((group, gi) => {
+      const { x, y: by } = layout.blocks[gi]!
+      const y0 = top + by
+      const w = layout.colWidth - layout.padding / 2
+      const qtyWidth = layout.rowHeight * 1.6
+      // Titre de catégorie
       ctx.fillStyle = '#111827'
-      ctx.font = `${Math.round(layout.rowHeight * 0.48)}px system-ui, sans-serif`
+      ctx.font = `700 ${Math.round(layout.rowHeight * 0.52)}px system-ui, sans-serif`
       ctx.textBaseline = 'middle'
-      const text = `${entry.name} × ${entry.count}`
-      ctx.fillText(text, x + layout.iconSize + layout.padding / 2, y + layout.iconSize / 2, colWidth - layout.iconSize - layout.padding)
+      ctx.textAlign = 'left'
+      ctx.fillText(group.category.toUpperCase(), x, y0 + layout.headerHeight / 2, w - qtyWidth)
+      ctx.textAlign = 'right'
+      ctx.fillText('QTÉ', x + w, y0 + layout.headerHeight / 2)
+      // Tableau : cadre, lignes
+      ctx.strokeStyle = '#111827'
+      ctx.lineWidth = line
+      const tableTop = y0 + layout.headerHeight
+      const tableHeight = group.entries.length * layout.rowHeight
+      ctx.strokeRect(x, tableTop, w, tableHeight)
+      const iconCol = layout.iconSize + layout.padding / 2
+      ctx.beginPath()
+      ctx.moveTo(x + iconCol, tableTop)
+      ctx.lineTo(x + iconCol, tableTop + tableHeight)
+      ctx.moveTo(x + w - qtyWidth, tableTop)
+      ctx.lineTo(x + w - qtyWidth, tableTop + tableHeight)
+      group.entries.forEach((entry, i) => {
+        if (i) {
+          ctx.moveTo(x, tableTop + i * layout.rowHeight)
+          ctx.lineTo(x + w, tableTop + i * layout.rowHeight)
+        }
+      })
+      ctx.stroke()
+      group.entries.forEach((entry, i) => {
+        const cy = tableTop + i * layout.rowHeight + layout.rowHeight / 2
+        ctx.save()
+        ctx.translate(x + iconCol / 2, cy)
+        drawGlyph(ctx, entry.icon, entry.color, layout.iconSize, entry.icon ? o.images.get(entry.icon.id) : undefined)
+        ctx.restore()
+        ctx.fillStyle = '#111827'
+        ctx.font = `${Math.round(layout.rowHeight * 0.46)}px system-ui, sans-serif`
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = 'left'
+        ctx.fillText(entry.name, x + iconCol + layout.padding / 3, cy, w - iconCol - qtyWidth - layout.padding / 2)
+        ctx.textAlign = 'center'
+        ctx.fillText(String(entry.count), x + w - qtyWidth / 2, cy)
+      })
     })
   }
 
