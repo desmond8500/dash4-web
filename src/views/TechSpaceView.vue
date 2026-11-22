@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { searchOnly } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 import { markdownToText } from '@dash4/shared'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -44,6 +46,11 @@ const editing = ref<TechShare | null>(null)
 const detail = ref<TechShare | null>(null)
 
 const requests = ref<TechAccessRequest[]>([])
+// Recherche dans les listes chargées
+const shareQuery = ref('')
+const requestQuery = ref('')
+const shownShares = computed(() => searchOnly(shares.value, shareQuery.value, (s) => [s.title, s.category.label, s.task?.title, s.project?.name, s.creator?.full_name, ...(s.recipients ?? []).map((r) => r.full_name)]))
+const shownRequests = computed(() => searchOnly(requests.value, requestQuery.value, (r) => [r.subject, r.reason, r.task?.title, r.project?.name, r.user?.full_name]))
 const requestFilter = ref<'pending' | 'all'>('pending')
 const loadingRequests = ref(false)
 const deciding = ref<TechAccessRequest | null>(null)
@@ -155,8 +162,11 @@ function removeRequest(r: TechAccessRequest): void {
       </TabList>
       <TabPanels>
         <TabPanel v-if="canShares" value="infos">
-          <SelectButton v-model="shareStatus" :options="[{ value: 'active', label: 'En cours' }, { value: 'expired', label: 'Expirées' }]" option-label="label" option-value="value" :allow-empty="false" class="filter" />
-          <DataTable :value="shares" :loading="loadingShares" data-key="id" row-hover class="clickable" @row-click="(e) => (detail = e.data)">
+          <div class="list-tools">
+            <SelectButton v-model="shareStatus" :options="[{ value: 'active', label: 'En cours' }, { value: 'expired', label: 'Expirées' }]" option-label="label" option-value="value" :allow-empty="false" />
+            <ListSearch v-model="shareQuery" placeholder="Titre, tâche, projet, destinataire…" />
+          </div>
+          <DataTable :value="shownShares" :loading="loadingShares" data-key="id" row-hover class="clickable" @row-click="(e) => (detail = e.data)">
             <template #empty>Aucune information {{ shareStatus === 'active' ? 'en cours' : 'expirée' }}.</template>
             <Column header="Information">
               <template #body="{ data }"><strong>{{ data.title }}</strong><div class="muted small">{{ data.category.label }}<template v-if="data.task"> · {{ data.task.title }}</template><template v-else-if="data.project"> · {{ data.project.name }}</template></div></template>
@@ -170,8 +180,11 @@ function removeRequest(r: TechAccessRequest): void {
         </TabPanel>
 
         <TabPanel v-if="canRequests" value="demandes">
-          <SelectButton v-model="requestFilter" :options="[{ value: 'pending', label: 'En attente' }, { value: 'all', label: 'Toutes' }]" option-label="label" option-value="value" :allow-empty="false" class="filter" />
-          <DataTable :value="requests" :loading="loadingRequests" data-key="id">
+          <div class="list-tools">
+            <SelectButton v-model="requestFilter" :options="[{ value: 'pending', label: 'En attente' }, { value: 'all', label: 'Toutes' }]" option-label="label" option-value="value" :allow-empty="false" />
+            <ListSearch v-model="requestQuery" placeholder="Objet, tâche, projet, demandeur…" />
+          </div>
+          <DataTable :value="shownRequests" :loading="loadingRequests" data-key="id">
             <template #empty>Aucune demande {{ requestFilter === 'pending' ? 'en attente' : '' }}.</template>
             <Column header="Demande">
               <template #body="{ data }">
@@ -235,6 +248,13 @@ function removeRequest(r: TechAccessRequest): void {
 </template>
 
 <style scoped>
+.list-tools {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
 .intro {
   margin-top: -0.5rem;
 }

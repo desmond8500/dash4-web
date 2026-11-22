@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable, { type DataTableRowClickEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -9,6 +9,8 @@ import type { Article, ArticleFilters } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { formatQty, stockState } from '@/utils/stock'
+import { searchOnly } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 
 /** Articles d'une marque ou d'un fournisseur (actifs et inactifs). */
 const props = defineProps<{ filters: ArticleFilters }>()
@@ -29,12 +31,15 @@ async function load(): Promise<void> {
 }
 watch(() => props.filters, load, { deep: true })
 onMounted(load)
+const query = ref('')
+const shown = computed(() => searchOnly(articles.value, query.value, (a) => [a.designation, a.reference, a.barcode, a.brand?.name]))
 const open = (e: DataTableRowClickEvent) => router.push({ name: 'article', params: { id: (e.data as Article).id } })
 </script>
 
 <template>
-  <DataTable :value="articles" :loading="loading" data-key="id" row-hover class="clickable" @row-click="open">
-    <template #empty>Aucun article.</template>
+  <ListSearch v-if="articles.length > 8" v-model="query" class="search" placeholder="Rechercher un article (désignation, référence)…" />
+  <DataTable :value="shown" :loading="loading" data-key="id" row-hover class="clickable" @row-click="open">
+    <template #empty>{{ query ? 'Aucun article ne correspond.' : 'Aucun article.' }}</template>
     <Column header="" style="width: 3.5rem">
       <template #body="{ data }">
         <img v-if="data.image_url" :src="data.image_url" alt="" class="thumb" />
@@ -63,6 +68,9 @@ const open = (e: DataTableRowClickEvent) => router.push({ name: 'article', param
 </template>
 
 <style scoped>
+.search {
+  margin-bottom: 0.75rem;
+}
 .clickable :deep(tbody tr) {
   cursor: pointer;
 }

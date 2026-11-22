@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { matchesSearch } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 import { markdownToText } from '@dash4/shared'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
@@ -27,6 +29,16 @@ const canManage = computed(() => auth.can('quotes.update') && auth.can('costs.vi
 
 const systems = ref<QuoteSystem[]>([])
 const loose = ref<QuoteTemplateSummary[]>([])
+// Recherche : un système s'affiche si son nom correspond (tous ses modèles) ou si l'un de ses modèles correspond
+const query = ref('')
+const shownSystems = computed(() =>
+  !query.value.trim()
+    ? systems.value
+    : systems.value
+        .map((s) => (matchesSearch(query.value, s.name, s.description) ? s : { ...s, templates: s.templates.filter((t) => matchesSearch(query.value, t.name, t.description)) }))
+        .filter((s) => s.templates.length || matchesSearch(query.value, s.name, s.description)),
+)
+const shownLoose = computed(() => loose.value.filter((t) => !query.value.trim() || matchesSearch(query.value, t.name)))
 const loading = ref(false)
 
 async function load(): Promise<void> {
@@ -174,7 +186,9 @@ const total = computed(() =>
       On peut aussi enregistrer une section d'un devis comme modèle (icône signet de la section).
     </p>
 
-    <Card v-for="system in systems" :key="system.id">
+    <ListSearch v-if="systems.length + loose.length > 3" v-model="query" class="search" placeholder="Rechercher un système ou un modèle…" />
+
+    <Card v-for="system in shownSystems" :key="system.id">
       <template #title>
         <div class="card-title">
           <span>{{ system.name }}</span>
@@ -203,12 +217,12 @@ const total = computed(() =>
       </template>
     </Card>
 
-    <Card v-if="loose.length">
+    <Card v-if="shownLoose.length">
       <template #title>Sans système</template>
       <template #content>
         <table class="list">
           <tbody>
-            <tr v-for="t in loose" :key="t.id">
+            <tr v-for="t in shownLoose" :key="t.id">
               <td><strong>{{ t.name }}</strong></td>
               <td class="muted">{{ t.lines_count }} ligne(s)</td>
               <td class="actions">
@@ -222,6 +236,7 @@ const total = computed(() =>
     </Card>
 
     <p v-if="!loading && !systems.length && !loose.length" class="muted">Aucun modèle pour l'instant.</p>
+    <p v-else-if="query.trim() && !shownSystems.length && !shownLoose.length" class="muted">Aucun système ni modèle ne correspond.</p>
 
     <Dialog v-model:visible="systemOpen" :header="systemEdited ? 'Modifier le système' : 'Nouveau système'" modal :style="{ width: '460px' }">
       <div class="form-grid">
@@ -295,6 +310,9 @@ const total = computed(() =>
 </template>
 
 <style scoped>
+.search {
+  margin-bottom: 1rem;
+}
 .back {
   color: var(--p-text-muted-color);
   text-decoration: none;

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ListSearch from '@/components/ListSearch.vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Select from 'primevue/select'
@@ -24,6 +25,7 @@ const filters = reactive({
   type: null as StockMovementType | null,
   range: null as Array<Date | null> | null,
   article_id: route.query.article_id ? Number(route.query.article_id) : undefined,
+  search: '',
   page: 1,
 })
 
@@ -34,6 +36,7 @@ async function load(): Promise<void> {
       from: toApiDate(filters.range?.[0] ?? null) ?? undefined,
       to: toApiDate(filters.range?.[1] ?? null) ?? undefined,
       article_id: filters.article_id,
+      search: filters.search.trim() || undefined,
       page: filters.page,
       per_page: 50,
     })
@@ -51,6 +54,18 @@ watch(
     void load()
   },
 )
+// Recherche : relancée après une courte pause de frappe
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => filters.search,
+  () => {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      filters.page = 1
+      void load()
+    }, 300)
+  },
+)
 const onPage = (e: PageState) => {
   filters.page = e.page + 1
   void load()
@@ -63,6 +78,7 @@ onMounted(load)
     <RouterLink :to="{ name: 'stock' }" class="back"><i class="pi pi-arrow-left" /> Stock</RouterLink>
     <div class="page-header"><h1>Mouvements de stock</h1></div>
     <div class="filters">
+      <ListSearch v-model="filters.search" placeholder="Article, référence, motif, projet…" />
       <Select v-model="filters.type" :options="types" option-label="label" option-value="value" />
       <DatePicker v-model="filters.range" selection-mode="range" date-format="dd/mm/yy" placeholder="Période" show-button-bar />
       <span v-if="filters.article_id" class="muted">Un seul article · <a href="#" @click.prevent="(filters.article_id = undefined), load()">tous les articles</a></span>

@@ -133,6 +133,7 @@ const fieldError = (f: string) => errors.value[f]?.[0]
           :options="[{ id: null, name: 'Aucun projet' }, ...projects]"
           option-label="name"
           option-value="id"
+          filter
           :disabled="!projects.length"
           :placeholder="projects.length ? 'Choisir un projet' : 'Aucun projet pour ce client'"
           :invalid="!!fieldError('project_id')"

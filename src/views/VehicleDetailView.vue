@@ -414,7 +414,7 @@ function onExpenseSaved(): void {
               <span class="grow" />
               <Button label="Nouvelle dépense" icon="pi pi-plus" size="small" @click="(expenseEdited = null), (expenseDialog = true)" />
             </div>
-            <ExpenseTable :expenses="expenses" :loading="expensesLoading" @open="(e) => ((expenseEdited = e), (expenseDialog = true))" />
+            <ExpenseTable searchable :expenses="expenses" :loading="expensesLoading" @open="(e) => ((expenseEdited = e), (expenseDialog = true))" />
             <ExpenseDialog v-model:visible="expenseDialog" :expense="expenseEdited" :vehicle-id="vehicle.id" @saved="onExpenseSaved" @removed="onExpenseSaved" />
           </TabPanel>
 

@@ -118,7 +118,7 @@ function open(expense: Expense | null): void {
         <Card>
           <template #title>Dépenses de la caisse</template>
           <template #content>
-            <ExpenseTable :expenses="expenses" hide-space @open="open" />
+            <ExpenseTable searchable :expenses="expenses" hide-space @open="open" />
             <p class="muted small">Les dépenses « avancées » par une personne ne sortent pas de la caisse : elles lui sont remboursées.</p>
           </template>
         </Card>

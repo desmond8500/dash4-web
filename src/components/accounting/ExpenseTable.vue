@@ -6,14 +6,25 @@ import { formatMoney } from '@dash4/shared'
 import type { Expense } from '@dash4/shared'
 import { formatDate } from '@/utils/projects'
 import { expenseStatusSeverity } from '@/utils/accounting'
+import { computed, ref } from 'vue'
+import { searchOnly } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 
-const props = defineProps<{ expenses: Expense[]; loading?: boolean; lazy?: boolean; total?: number; rows?: number; hideSpace?: boolean }>()
+/** `searchable` : champ de recherche dans la liste chargée (listes non paginées). */
+const props = defineProps<{ expenses: Expense[]; loading?: boolean; lazy?: boolean; total?: number; rows?: number; hideSpace?: boolean; searchable?: boolean }>()
+const query = ref('')
+const shown = computed(() =>
+  props.searchable && !props.lazy
+    ? searchOnly(props.expenses, query.value, (e) => [e.label, e.description, e.category?.name, e.project?.name, e.provider?.name, e.space?.name, e.creator?.full_name, e.amount])
+    : props.expenses,
+)
 const emit = defineEmits<{ open: [expense: Expense]; page: [event: DataTablePageEvent] }>()
 </script>
 
 <template>
+  <ListSearch v-if="props.searchable && !props.lazy && props.expenses.length > 5" v-model="query" class="search" placeholder="Rechercher une dépense…" />
   <DataTable
-    :value="props.expenses"
+    :value="shown"
     :loading="props.loading"
     :lazy="props.lazy"
     :paginator="props.lazy"
@@ -25,7 +36,7 @@ const emit = defineEmits<{ open: [expense: Expense]; page: [event: DataTablePage
     @row-click="(e: DataTableRowClickEvent) => emit('open', e.data as Expense)"
     @page="emit('page', $event)"
   >
-    <template #empty>Aucune dépense.</template>
+    <template #empty>{{ query ? 'Aucune dépense ne correspond.' : 'Aucune dépense.' }}</template>
     <Column header="Date" style="width: 7rem"><template #body="{ data }">{{ formatDate(data.spent_at) }}</template></Column>
     <Column header="Dépense">
       <template #body="{ data }">
@@ -52,6 +63,9 @@ const emit = defineEmits<{ open: [expense: Expense]; page: [event: DataTablePage
 </template>
 
 <style scoped>
+.search {
+  margin-bottom: 0.75rem;
+}
 .clickable :deep(tbody tr) {
   cursor: pointer;
 }

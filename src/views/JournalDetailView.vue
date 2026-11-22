@@ -265,7 +265,7 @@ function remove(): void {
               </ul>
               <div v-if="editable" class="add-participants">
                 <Select v-if="people.length" v-model="newPerson" :options="people" option-label="full_name" option-value="id" filter placeholder="Ajouter un membre de l'équipe" @change="newPerson && addParticipant({ user_id: newPerson })" />
-                <Select v-if="contacts.length" v-model="newContact" :options="contacts" option-label="full_name" option-value="id" placeholder="Ajouter un contact du client" @change="newContact && addParticipant({ contact_id: newContact })" />
+                <Select v-if="contacts.length" v-model="newContact" :options="contacts" option-label="full_name" option-value="id" filter placeholder="Ajouter un contact du client" @change="newContact && addParticipant({ contact_id: newContact })" />
                 <form class="row" @submit.prevent="newName.trim() && addParticipant({ name: newName.trim() })">
                   <InputText v-model="newName" placeholder="Autre personne" class="grow" />
                   <Button type="submit" icon="pi pi-plus" size="small" aria-label="Ajouter" :disabled="!newName.trim()" />

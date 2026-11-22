@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { searchOnly } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -40,9 +42,12 @@ const ledger = ref<LedgerEntry[]>([])
 const ledgerTotal = ref(0)
 const ledgerPage = ref(1)
 const ledgerDirection = ref<'all' | 'in' | 'out'>('all')
+const ledgerSearch = ref('')
 const projects = ref<Project[]>([])
 const categories = ref<ExpenseCategory[]>([])
 const transactions = ref<Transaction[]>([])
+const transactionQuery = ref('')
+const shownTransactions = computed(() => searchOnly(transactions.value, transactionQuery.value, (t) => [t.label, t.reference, t.project?.name, t.category?.name, t.method?.label, t.amount]))
 
 const errorDetail = (e: unknown) => (e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : (e as Error).message)
 const filters = () => ({ ...range.value, project_id: period.project_id ?? undefined })
@@ -55,7 +60,7 @@ async function loadSummary(): Promise<void> {
   }
 }
 async function loadLedger(): Promise<void> {
-  const result = await api.accounting.ledger({ ...filters(), direction: ledgerDirection.value === 'all' ? undefined : ledgerDirection.value, page: ledgerPage.value, per_page: 50 })
+  const result = await api.accounting.ledger({ ...filters(), direction: ledgerDirection.value === 'all' ? undefined : ledgerDirection.value, search: ledgerSearch.value.trim() || undefined, page: ledgerPage.value, per_page: 50 })
   ledger.value = result.data
   ledgerTotal.value = result.meta.total
 }
@@ -70,6 +75,14 @@ function reload(): void {
   void loadTransactions()
 }
 watch(() => [period.kind, period.date, period.project_id], reload)
+let ledgerTimer: ReturnType<typeof setTimeout> | undefined
+watch(ledgerSearch, () => {
+  clearTimeout(ledgerTimer)
+  ledgerTimer = setTimeout(() => {
+    ledgerPage.value = 1
+    void loadLedger()
+  }, 300)
+})
 watch(ledgerDirection, () => {
   ledgerPage.value = 1
   void loadLedger()
@@ -261,7 +274,10 @@ async function removeCategory(c: ExpenseCategory): Promise<void> {
         </TabPanel>
 
         <TabPanel value="ledger">
-          <SelectButton v-model="ledgerDirection" :options="[{ v: 'all', l: 'Tout' }, { v: 'in', l: 'Entrées' }, { v: 'out', l: 'Sorties' }]" option-label="l" option-value="v" :allow-empty="false" class="mb" />
+          <div class="list-tools">
+            <SelectButton v-model="ledgerDirection" :options="[{ v: 'all', l: 'Tout' }, { v: 'in', l: 'Entrées' }, { v: 'out', l: 'Sorties' }]" option-label="l" option-value="v" :allow-empty="false" />
+            <ListSearch v-model="ledgerSearch" placeholder="Libellé, client, catégorie, projet…" />
+          </div>
           <table v-if="ledger.length" class="list">
             <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th>Projet</th><th class="num">Montant</th></tr></thead>
             <tbody>
@@ -280,10 +296,11 @@ async function removeCategory(c: ExpenseCategory): Promise<void> {
 
         <TabPanel value="transactions">
           <p class="muted small">Entrées et sorties qui ne viennent ni d'une facture, ni d'une dépense, ni d'un achat : apport, emprunt, salaires, loyer, impôts…</p>
-          <table v-if="transactions.length" class="list">
+          <ListSearch v-if="transactions.length > 5" v-model="transactionQuery" class="search" placeholder="Libellé, référence, projet, catégorie…" />
+          <table v-if="shownTransactions.length" class="list">
             <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th>Moyen</th><th class="num">Montant</th><th /></tr></thead>
             <tbody>
-              <tr v-for="t in transactions" :key="t.id">
+              <tr v-for="t in shownTransactions" :key="t.id">
                 <td>{{ formatDate(t.transacted_at) }}</td>
                 <td>{{ t.label }}<div v-if="t.reference || t.project" class="muted small">{{ [t.reference, t.project?.name].filter(Boolean).join(' · ') }}</div></td>
                 <td>{{ t.category?.name ?? '' }}</td>
@@ -296,7 +313,7 @@ async function removeCategory(c: ExpenseCategory): Promise<void> {
               </tr>
             </tbody>
           </table>
-          <p v-else class="muted">Aucune transaction sur la période.</p>
+          <p v-else class="muted">{{ transactionQuery.trim() && transactions.length ? 'Aucune transaction ne correspond.' : 'Aucune transaction sur la période.' }}</p>
         </TabPanel>
 
         <TabPanel value="categories">
@@ -350,6 +367,16 @@ async function removeCategory(c: ExpenseCategory): Promise<void> {
 </template>
 
 <style scoped>
+.list-tools {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.search {
+  margin-bottom: 0.75rem;
+}
 .filters {
   display: flex;
   gap: 0.75rem;

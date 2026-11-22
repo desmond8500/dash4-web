@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { searchOnly } from '@/utils/listSearch'
+import ListSearch from '@/components/ListSearch.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
@@ -16,7 +18,8 @@ const items = ref<ScheduleItem[]>([])
 const meta = ref({ total: 0, overdue: 0 })
 const months = ref(6)
 const loading = ref(true)
-const groups = computed(() => groupByMonth(items.value))
+const query = ref('')
+const groups = computed(() => groupByMonth(searchOnly(items.value, query.value, (i) => [i.label, i.client, kinds[i.kind]])))
 const money = (v: number) => formatMoney(v, settings.currency())
 const kinds = { invoice: 'Facture', deposit: 'Acompte', contract: 'Contrat' } as const
 
@@ -52,7 +55,9 @@ function open(i: ScheduleItem): void {
       <Card><template #content><div class="muted small">Dont en retard</div><div class="kpi late">{{ money(meta.overdue) }}</div></template></Card>
     </div>
 
+    <ListSearch v-if="items.length > 5" v-model="query" class="search" placeholder="Client, facture, devis, contrat…" />
     <p v-if="!loading && !items.length" class="muted">Rien à encaisser sur la période.</p>
+    <p v-else-if="query.trim() && !groups.length" class="muted">Rien ne correspond à la recherche.</p>
     <Card v-for="g in groups" :key="g.key">
       <template #title>
         <div class="month"><span :class="{ late: g.key === '0000-00' }">{{ g.label }}</span><span>{{ money(g.total) }}</span></div>
@@ -74,6 +79,9 @@ function open(i: ScheduleItem): void {
 </template>
 
 <style scoped>
+.search {
+  margin-bottom: 1rem;
+}
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
