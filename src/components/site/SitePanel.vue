@@ -27,6 +27,7 @@ import QuantitiesPanel from './QuantitiesPanel.vue'
 import SheetsPanel from './SheetsPanel.vue'
 import SelectButton from 'primevue/selectbutton'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
+import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
 
 /** Chantier d'un projet : bâtiments, niveaux et pièces ; systèmes installés, avancement et équipements. */
 const props = defineProps<{ projectId: number }>()
@@ -97,6 +98,19 @@ function confirmDelete(label: string, action: () => Promise<Site>): void {
     acceptProps: { label: 'Supprimer', severity: 'danger' },
     rejectProps: { label: 'Annuler', severity: 'secondary', text: true },
     accept: () => void run(action, 'Suppression impossible'),
+  })
+}
+
+// Appareils depuis un devis du projet ; éclater un groupe en appareils identiques
+const fromQuoteOpen = ref(false)
+const canFromQuote = computed(() => can.value.manage && auth.canAny(['quotes.view', 'quotes.view.own']))
+function confirmSplit(e: Equipment): void {
+  confirm.require({
+    header: 'Éclater le groupe',
+    message: `Créer ${e.quantity} appareils « ${e.name} » de quantité 1, avec les mêmes informations ? Le n° de série, les sous-équipements et les pièces jointes restent sur le premier.`,
+    acceptProps: { label: `Éclater en ${e.quantity}` },
+    rejectProps: { label: 'Annuler', severity: 'secondary', text: true },
+    accept: () => void run(() => api.sites.splitEquipment(e.id), 'Éclatement impossible'),
   })
 }
 
@@ -244,8 +258,10 @@ async function removeCatalog(id: number): Promise<void> {
       <div class="systems">
         <div class="systems-head">
           <h3>Systèmes installés</h3>
+          <Button v-if="canFromQuote" label="Depuis un devis" icon="pi pi-file-import" size="small" severity="secondary" outlined @click="fromQuoteOpen = true" />
           <Button v-if="can.create" label="Ajouter un système" icon="pi pi-plus" size="small" @click="openSystem(null)" />
         </div>
+        <QuoteSiteDialog v-if="canFromQuote" v-model:visible="fromQuoteOpen" :project-id="props.projectId" @done="set" />
         <p v-if="!site!.systems.length" class="muted">Aucun système. Ajoutez la vidéosurveillance, l'alarme, la détection incendie… puis leurs équipements.</p>
         <Card v-for="s in site!.systems" :key="s.id" class="system">
           <template #content>
@@ -286,6 +302,7 @@ async function removeCatalog(id: number): Promise<void> {
                       <td class="actions">
                         <template v-if="can.manage">
                           <Button v-if="!e.parent_id" icon="pi pi-plus" text rounded size="small" aria-label="Ajouter un sous-équipement" title="Ajouter un sous-équipement" @click="openEquipment(s, null, e.id)" />
+                          <Button v-if="e.quantity > 1" icon="pi pi-clone" text rounded size="small" aria-label="Éclater le groupe" :title="`Éclater en ${e.quantity} appareils identiques`" @click="confirmSplit(e)" />
                           <Button icon="pi pi-pencil" text rounded size="small" aria-label="Modifier" @click="openEquipment(s, e)" />
                           <Button v-if="can.delete" icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer" @click="confirmDelete(`« ${e.name} »`, () => api.sites.removeEquipment(e.id))" />
                         </template>

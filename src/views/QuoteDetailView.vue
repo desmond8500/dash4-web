@@ -35,6 +35,7 @@ import QuoteProposalPanel from '@/components/quotes/QuoteProposalPanel.vue'
 import QuoteEmailDialog from '@/components/quotes/QuoteEmailDialog.vue'
 import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
 import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
+import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
 import { invoiceStatusSeverity } from '@/utils/invoices'
 import Dialog from 'primevue/dialog'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
@@ -256,6 +257,10 @@ function remove(): void {
 
 // Factures du devis accepté
 const invoiceOpen = ref(false)
+// Appareils du chantier depuis le devis (chef de projet ou gestionnaire du chantier)
+const siteOpen = ref(false)
+const canToSite = computed(() => !!quote.value?.project_id && auth.canAny(['sites.update', 'sites.update.own']))
+
 const canInvoice = computed(() => quote.value?.status.value === 'accepted' && auth.can('invoices.create'))
 
 // Étape 2 : e-mail, modèles, proposition technique
@@ -369,6 +374,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           <Button v-if="canInvoice" label="Facturer" icon="pi pi-receipt" severity="success" @click="invoiceOpen = true" />
           <Button v-if="quote.can.export && quote.can.update" label="Envoyer" icon="pi pi-send" @click="emailOpen = true" />
           <Button v-if="quote.can.export" label="PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
+          <Button v-if="canToSite" label="Vers le chantier" icon="pi pi-sitemap" severity="secondary" outlined title="Créer les appareils du chantier depuis le devis" @click="siteOpen = true" />
           <Button v-if="auth.can('quotes.create')" label="Dupliquer" icon="pi pi-copy" severity="secondary" outlined @click="duplicate" />
           <Button v-if="quote.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
         </div>
@@ -626,6 +632,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
         </aside>
       </div>
 
+      <QuoteSiteDialog v-if="quote.project_id" v-model:visible="siteOpen" :quote-id="quote.id" />
       <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
       <InvoiceCreateDialog
         v-if="canInvoice"
