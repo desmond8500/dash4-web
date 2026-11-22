@@ -8,6 +8,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useRouter } from 'vue-router'
 import { ApiError, placeLabel, relativePosition } from '@dash4/shared'
 import type { Equipment, Plan, PlanMarker, Site } from '@dash4/shared'
 import { api } from '@/services/api'
@@ -17,6 +18,7 @@ import { equipmentStatusSeverity } from '@/utils/site'
 const props = defineProps<{ site: Site }>()
 const toast = useToast()
 const confirm = useConfirm()
+const router = useRouter()
 
 const plans = ref<Plan[]>([])
 const current = ref<Plan | null>(null)
@@ -156,6 +158,7 @@ function remove(plan: Plan): void {
         <input ref="fileInput" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" hidden @change="onUpload" />
         <Button label="Envoyer un plan" icon="pi pi-upload" size="small" text :loading="uploading" @click="fileInput?.click()" />
       </template>
+      <Button v-if="plans.length" label="Éditeur de plans" icon="pi pi-pencil" size="small" text @click="router.push({ name: 'plan-editor', params: { projectId: props.site.project.id } })" />
     </aside>
 
     <section v-if="current" class="viewer">
@@ -169,6 +172,7 @@ function remove(plan: Plan): void {
         <Button icon="pi pi-search-minus" text rounded size="small" :disabled="zoom <= 0.5" aria-label="Dézoomer" @click="zoom = Math.max(0.5, zoom - 0.25)" />
         <span class="small">{{ Math.round(zoom * 100) }} %</span>
         <Button icon="pi pi-search-plus" text rounded size="small" :disabled="zoom >= 4" aria-label="Zoomer" @click="zoom = Math.min(4, zoom + 0.25)" />
+        <Button label="Ouvrir l'éditeur" icon="pi pi-external-link" size="small" @click="router.push({ name: 'plan-editor', params: { projectId: props.site.project.id, planId: current!.id } })" />
         <Button v-if="can.manage" :label="placing ? 'Terminer' : 'Placer des repères'" :icon="placing ? 'pi pi-check' : 'pi pi-map-marker'" size="small" :severity="placing ? 'success' : 'secondary'" @click="placing = !placing" />
         <Button v-if="can.manage" icon="pi pi-pencil" text rounded size="small" aria-label="Renommer" @click="rename(current!)" />
         <Button v-if="can.delete" icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer le plan" @click="remove(current!)" />

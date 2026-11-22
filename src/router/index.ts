@@ -215,6 +215,19 @@ export const router = createRouter({
           meta: { title: 'Tâche', permissions: ['tasks.view', 'tasks.view.own'] },
         },
         {
+          path: 'projets/:projectId(\\d+)/plans/:planId(\\d+)?',
+          name: 'plan-editor',
+          component: () => import('@/views/PlanEditorView.vue'),
+          props: true,
+          meta: { title: 'Plans', permissions: ['sites.view', 'sites.view.own'] },
+        },
+        {
+          path: 'stock/icones',
+          name: 'plan-icons',
+          component: () => import('@/views/PlanIconsView.vue'),
+          meta: { title: 'Icônes des plans', permissions: ['stock.view', 'sites.view', 'sites.view.own'] },
+        },
+        {
           path: 'parc',
           name: 'vehicles',
           component: () => import('@/views/VehiclesView.vue'),

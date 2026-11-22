@@ -58,7 +58,7 @@ const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const editOpen = ref(false)
-const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
+const tab = ref(({ commentaires: 'comments', chantier: 'site', devis: 'quotes', taches: 'tasks', journaux: 'journals' } as Record<string, string>)[String(useRoute().query.onglet ?? '')] ?? 'notes')
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoBusy = ref(false)
 

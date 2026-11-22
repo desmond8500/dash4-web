@@ -12,6 +12,8 @@ import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared
 import type { Article, ArticlePayload, Brand, Provider, QuoteLineCategory, StorageLocation } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { usePlanIconsStore } from '@/stores/planIcons'
+import PlanIconGlyph from '@/components/plans/PlanIconGlyph.vue'
 
 /** Création ou modification d'un article. Coût et coefficient : costs.view. */
 const props = defineProps<{ article?: Article | null }>()
@@ -23,6 +25,7 @@ const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLi
 const brands = ref<Brand[]>([])
 const providers = ref<Provider[]>([])
 const locations = ref<StorageLocation[]>([])
+const planIcons = usePlanIconsStore()
 const errors = ref<Record<string, string[]>>({})
 const generalError = ref<string | null>(null)
 const saving = ref(false)
@@ -41,6 +44,7 @@ const form = reactive({
   coefficient: 1,
   min_quantity: null as number | null,
   storage_location_id: null as number | null,
+  plan_icon_id: null as number | null,
   description: '',
   is_active: true,
   initial_quantity: null as number | null,
@@ -63,6 +67,7 @@ watch(visible, async (open) => {
     coefficient: a?.coefficient ?? 1,
     min_quantity: a?.min_quantity ?? null,
     storage_location_id: a?.storage_location_id ?? null,
+    plan_icon_id: a?.plan_icon_id ?? null,
     description: a?.description ?? '',
     is_active: a?.is_active ?? true,
     initial_quantity: null,
@@ -71,6 +76,7 @@ watch(visible, async (open) => {
   brands.value = b.status === 'fulfilled' ? b.value : []
   providers.value = p.status === 'fulfilled' ? p.value.data : []
   locations.value = l.status === 'fulfilled' ? l.value : []
+  void planIcons.load()
 })
 
 async function save(): Promise<void> {
@@ -85,6 +91,7 @@ async function save(): Promise<void> {
     provider_id: form.provider_id,
     min_quantity: form.min_quantity,
     storage_location_id: form.storage_location_id,
+    plan_icon_id: form.plan_icon_id,
     description: text(form.description),
     is_active: form.is_active,
     ...(canCosts.value ? { unit_cost: form.unit_cost, coefficient: form.coefficient } : {}),
@@ -168,6 +175,18 @@ const fieldError = (f: string) => errors.value[f]?.[0]
         <Select id="a-location" v-model="form.storage_location_id" :options="[{ id: null, name: 'Non rangé' }, ...locations]" option-label="name" option-value="id" filter />
         <small class="muted">Nouvel emplacement : Stock → Emplacements.</small>
       </div>
+      <div v-if="planIcons.icons.length" class="form-field">
+        <label for="a-icon">Icône sur les plans</label>
+        <Select id="a-icon" v-model="form.plan_icon_id" :options="[{ id: null, name: 'Symbole par défaut' }, ...planIcons.icons]" option-label="name" option-value="id" filter>
+          <template #option="{ option }">
+            <span class="icon-option">
+              <span class="icon-glyph"><PlanIconGlyph :icon="option.id ? option : null" :color="option.color ?? '#e11d48'" /></span>
+              {{ option.name }}<small v-if="option.category" class="muted"> · {{ option.category }}</small>
+            </span>
+          </template>
+        </Select>
+        <small class="muted">Ses équipements prennent cette icône sur les plans (Stock → Icônes des plans).</small>
+      </div>
       <div v-if="creating" class="form-field">
         <label for="a-initial">Quantité en stock aujourd'hui</label>
         <InputNumber v-model="form.initial_quantity" input-id="a-initial" :min="0" :max-fraction-digits="2" placeholder="0" />
@@ -187,6 +206,15 @@ const fieldError = (f: string) => errors.value[f]?.[0]
 </template>
 
 <style scoped>
+.icon-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.icon-glyph {
+  width: 20px;
+  height: 20px;
+}
 .switch {
   display: flex;
   align-items: center;
