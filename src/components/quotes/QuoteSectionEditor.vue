@@ -8,6 +8,8 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Dialog from 'primevue/dialog'
+import { useRouter } from 'vue-router'
 import { formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
 import type { Currency, QuoteLine, QuoteLineCategory, QuoteLinePayload, QuoteSection } from '@dash4/shared'
 import { linePrice, sortedByCategory } from '@/utils/quotes'
@@ -31,6 +33,10 @@ const props = defineProps<{
   currency: Currency
   first: boolean
   last: boolean
+  /** Formulaires des lignes ouverts (réglage général du devis ; chaque section peut le changer). */
+  forms?: boolean
+  /** Lier une ligne à un article du stock (aussi sur un devis accepté). */
+  canLink?: boolean
 }>()
 const emit = defineEmits<{
   updateSection: [payload: { title?: string; is_visible?: boolean }]
@@ -42,7 +48,24 @@ const emit = defineEmits<{
   orderLines: [ids: number[]]
   saveProposal: [text: string | null]
   saveAsTemplate: []
+  linkArticle: [lineId: number, articleId: number | null]
 }>()
+
+const router = useRouter()
+
+// Lecture ou formulaires : en lecture, les lignes sont un tableau simple, plus lisible
+const formsOpen = ref(props.forms ?? false)
+watch(() => props.forms, (v) => (formsOpen.value = v ?? false))
+const showForms = computed(() => props.editable && formsOpen.value)
+const columns = computed(() => 5 + (props.editPrices ? 2 : 0) + (props.showPrices ? 2 : 0) + (props.editable || props.canLink ? 1 : 0))
+
+// Article du stock lié : photo à gauche, fiche dans un nouvel onglet
+const articleHref = (id: number) => router.resolve({ name: 'article', params: { id } }).href
+const linkFor = ref<QuoteLine | null>(null)
+function pickLinked(article: Article): void {
+  if (linkFor.value) emit('linkArticle', linkFor.value.id, article.id)
+  linkFor.value = null
+}
 
 const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLineCategory, string]>).map(
   ([value, label]) => ({ value, label }),
@@ -151,10 +174,17 @@ const menuItems = ref<Array<Record<string, unknown>>>([])
 function openMenu(event: Event, line: QuoteLine): void {
   const others = props.sections.filter((s) => s.id !== props.section.id)
   menuItems.value = [
-    ...(others.length
+    ...(line.article ? [{ label: "Voir l'article du stock", icon: 'pi pi-external-link', command: () => window.open(articleHref(line.article!.id), '_blank') }] : []),
+    ...(props.canLink
+      ? [
+          { label: line.article ? 'Lier à un autre article…' : 'Lier à un article du stock…', icon: 'pi pi-link', command: () => (linkFor.value = line) },
+          ...(line.article ? [{ label: "Délier l'article", icon: 'pi pi-times', command: () => emit('linkArticle', line.id, null) }] : []),
+        ]
+      : []),
+    ...(props.editable && others.length
       ? [{ label: 'Déplacer vers', items: others.map((s) => ({ label: s.title, command: () => emit('updateLine', line.id, { quote_section_id: s.id }) })) }]
       : []),
-    { label: 'Supprimer la ligne', icon: 'pi pi-trash', command: () => emit('removeLine', line.id) },
+    ...(props.editable ? [{ label: 'Supprimer la ligne', icon: 'pi pi-trash', command: () => emit('removeLine', line.id) }] : []),
   ]
   menu.value?.toggle(event)
 }
@@ -190,7 +220,18 @@ const money = (v: number) => formatMoney(v, props.currency)
         {{ props.section.is_visible ? 'Imprimée et comptée' : 'Masquée' }}
       </label>
       <span v-if="props.showPrices" class="subtotal">{{ money(subtotal) }}</span>
-      <template v-if="props.editable">
+      <Button
+        v-if="props.editable"
+        :icon="formsOpen ? 'pi pi-eye' : 'pi pi-pencil'"
+        :label="formsOpen ? 'Lecture' : 'Modifier les lignes'"
+        :severity="formsOpen ? 'secondary' : undefined"
+        text
+        size="small"
+        :aria-pressed="formsOpen"
+        title="Afficher ou masquer les formulaires des lignes"
+        @click="formsOpen = !formsOpen"
+      />
+      <template v-if="props.editable && showForms">
         <Button
           icon="pi pi-sort-amount-down"
           label="Trier par catégorie"
@@ -210,6 +251,7 @@ const money = (v: number) => formatMoney(v, props.currency)
     <table class="lines">
       <thead>
         <tr>
+          <th class="thumb-col" aria-label="Article" />
           <th>Désignation</th>
           <th style="width: 9rem">Catégorie</th>
           <th style="width: 6.5rem">Quantité</th>
@@ -222,12 +264,54 @@ const money = (v: number) => formatMoney(v, props.currency)
             <th class="num" style="width: 8rem">Prix unitaire</th>
             <th class="num" style="width: 9rem">Montant</th>
           </template>
-          <th v-if="props.editable" style="width: 6.5rem" />
+          <th v-if="props.editable || props.canLink" :style="{ width: showForms ? '6.5rem' : '2.5rem' }" />
         </tr>
       </thead>
       <tbody>
         <tr v-for="(line, index) in props.section.lines" :key="line.id" :class="{ zero: !line.quantity || !preview(line).unitPrice }">
-          <template v-if="drafts[line.id]">
+          <td class="thumb-col">
+            <a
+              v-if="line.article"
+              :href="articleHref(line.article.id)"
+              target="_blank"
+              rel="noopener"
+              class="thumb"
+              :class="{ deleted: line.article.deleted }"
+              :title="`${line.article.designation}${line.article.reference ? ` — ${line.article.reference}` : ''} · voir l'article du stock`"
+            >
+              <img v-if="line.article.image_url" :src="line.article.image_url" :alt="line.article.designation" loading="lazy" />
+              <i v-else class="pi pi-box" />
+            </a>
+            <button v-else-if="props.canLink" type="button" class="thumb empty-thumb" title="Lier à un article du stock" aria-label="Lier à un article du stock" @click="linkFor = line">
+              <i class="pi pi-link" />
+            </button>
+          </td>
+          <template v-if="!showForms">
+            <td>
+              <div class="read-designation">{{ line.designation }}</div>
+              <div v-if="line.reference" class="read-ref muted">{{ line.reference }}</div>
+              <div v-if="line.article" class="read-article">
+                <i class="pi pi-box" /> {{ line.article.reference || line.article.designation }}
+                <span v-if="line.article.deleted" class="muted">(retiré du stock)</span>
+                <span v-else class="muted">· {{ line.article.quantity }} {{ line.article.unit || 'u' }} en stock</span>
+              </div>
+            </td>
+            <td><span class="read-cat">{{ line.category.label }}</span></td>
+            <td class="num">{{ line.quantity }}</td>
+            <td>{{ line.unit || 'u' }}</td>
+            <template v-if="props.editPrices">
+              <td class="num muted">{{ money(line.unit_cost ?? 0) }}</td>
+              <td class="num muted">× {{ line.coefficient }}</td>
+            </template>
+            <template v-if="props.showPrices">
+              <td class="num">{{ money(line.unit_price ?? 0) }}</td>
+              <td class="num strong">{{ money(line.line_total ?? 0) }}</td>
+            </template>
+            <td v-if="props.editable || props.canLink" class="actions">
+              <Button icon="pi pi-ellipsis-v" text rounded size="small" aria-label="Plus d'actions" @click="openMenu($event, line)" />
+            </td>
+          </template>
+          <template v-else-if="drafts[line.id]">
             <td>
               <InputText v-model="drafts[line.id]!.designation" class="full" :disabled="!props.editable" @change="save(line, 'designation')" />
               <Textarea
@@ -301,11 +385,15 @@ const money = (v: number) => formatMoney(v, props.currency)
           </template>
         </tr>
         <tr v-if="!props.section.lines.length">
-          <td :colspan="8" class="muted empty">Aucune ligne dans cette section.</td>
+          <td :colspan="columns" class="muted empty">
+            Aucune ligne dans cette section.
+            <Button v-if="props.editable && !showForms" label="Ajouter des lignes" icon="pi pi-plus" text size="small" @click="formsOpen = true" />
+          </td>
         </tr>
       </tbody>
-      <tfoot v-if="props.editable">
+      <tfoot v-if="showForms">
         <tr class="new-line">
+          <td />
           <td>
             <InputText v-model="newLine.designation" class="full" placeholder="Nouvelle ligne : désignation, puis Entrée" @keydown.enter.prevent="add" />
           </td>
@@ -325,7 +413,8 @@ const money = (v: number) => formatMoney(v, props.currency)
           <td><Button icon="pi pi-plus" size="small" aria-label="Ajouter la ligne" :disabled="!newLine.designation.trim()" @click="add" /></td>
         </tr>
         <tr v-if="canPickArticle" class="new-line">
-          <td :colspan="8">
+          <td />
+          <td :colspan="columns - 1">
             <ArticlePicker placeholder="… ou choisir un article du stock (quantité ci-dessus)" @select="addArticle" />
           </td>
         </tr>
@@ -353,6 +442,12 @@ const money = (v: number) => formatMoney(v, props.currency)
       Vous rédigez les lignes ; le chiffrage (coût et coefficient) revient à un commercial ou au manager.
     </p>
     <Menu ref="menu" :model="menuItems" popup />
+    <Dialog :visible="!!linkFor" header="Lier à un article du stock" modal :style="{ width: '520px' }" @update:visible="(v) => !v && (linkFor = null)">
+      <p class="muted small">
+        Ligne « {{ linkFor?.designation }} » : la ligne garde sa désignation et ses prix ; l'article sert à consulter sa fiche et sa photo.
+      </p>
+      <ArticlePicker placeholder="Rechercher un article (désignation, référence)…" @select="pickLinked" />
+    </Dialog>
   </section>
 </template>
 
@@ -429,6 +524,63 @@ header {
 
 .full {
   width: 100%;
+}
+
+.thumb-col {
+  width: 3.25rem;
+}
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--p-content-border-color);
+  background: #fff;
+  color: var(--p-text-muted-color);
+  overflow: hidden;
+  text-decoration: none;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.thumb.deleted {
+  opacity: 0.5;
+}
+.empty-thumb {
+  border-style: dashed;
+  background: none;
+  cursor: pointer;
+  opacity: 0.5;
+}
+.empty-thumb:hover {
+  opacity: 1;
+  color: var(--p-primary-color);
+  border-color: var(--p-primary-color);
+}
+.read-designation {
+  font-weight: 600;
+  padding-top: 0.35rem;
+}
+.read-ref {
+  font-size: 0.8rem;
+  white-space: pre-line;
+}
+.read-article {
+  font-size: 0.75rem;
+  color: var(--p-primary-color);
+  margin-top: 0.125rem;
+}
+.read-cat {
+  display: inline-block;
+  padding-top: 0.35rem;
+  font-size: 0.85rem;
+}
+.small {
+  font-size: 0.85rem;
 }
 
 .ref {

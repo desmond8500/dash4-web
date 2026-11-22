@@ -117,6 +117,40 @@ void settings.load()
 if (auth.can('bank.view')) api.bankAccounts.list().then((b) => (banks.value = b)).catch(() => undefined)
 
 /** Envoie un changement et remplace le devis par la réponse (totaux recalculés). */
+// Lignes : formulaires ouverts ou lecture (choix gardé dans ce navigateur)
+const FORMS_KEY = 'dash4.quote.lineForms'
+const linesForms = ref((() => {
+  try {
+    return localStorage.getItem(FORMS_KEY) === '1'
+  } catch {
+    return false
+  }
+})())
+watch(linesForms, (v) => {
+  try {
+    localStorage.setItem(FORMS_KEY, v ? '1' : '0')
+  } catch {
+    // Stockage indisponible : le choix vaut pour cette page
+  }
+})
+
+// Liaison des lignes aux articles du stock
+const canLinkArticles = computed(() => !!quote.value?.can.update && auth.can('stock.view'))
+const linking = ref(false)
+async function linkAll(): Promise<void> {
+  if (!quote.value) return
+  linking.value = true
+  try {
+    const r = await api.quotes.linkArticles(quote.value.id)
+    setQuote(r.quote)
+    toast.add({ severity: r.linked ? 'success' : 'info', summary: 'Articles du stock', detail: r.message, life: 4000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Liaison impossible', detail: (e as Error).message, life: 5000 })
+  } finally {
+    linking.value = false
+  }
+}
+
 async function run(action: () => Promise<Quote>, failure = 'Modification impossible'): Promise<void> {
   busy.value = true
   try {
@@ -387,6 +421,24 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             </template>
           </Card>
 
+          <div v-if="sections.length && (editable || canLinkArticles)" class="lines-toolbar">
+            <label v-if="editable" class="lines-toggle">
+              <ToggleSwitch v-model="linesForms" input-id="q-forms" />
+              <span>Formulaires des lignes</span>
+            </label>
+            <span class="grow" />
+            <Button
+              v-if="canLinkArticles"
+              label="Lier aux articles du stock"
+              icon="pi pi-link"
+              text
+              size="small"
+              title="Lie les lignes sans article à l'article de même référence ou de même désignation"
+              :loading="linking"
+              @click="linkAll"
+            />
+          </div>
+
           <QuoteSectionEditor
             v-for="(section, index) in sections"
             :key="section.id"
@@ -400,6 +452,9 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             :last="index === sections.length - 1"
             :can-edit-proposal="quote.can.update"
             :can-save-template="canManageTemplates"
+            :forms="linesForms"
+            :can-link="canLinkArticles"
+            @link-article="(lineId, articleId) => run(() => api.quotes.linkArticle(lineId, articleId), 'Liaison impossible')"
             @save-proposal="(text) => run(() => api.quotes.setSectionProposal(section.id, text))"
             @save-as-template="openSaveTemplate(section)"
             @update-section="(p) => updateSection(section.id, p)"
@@ -602,6 +657,21 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
 </template>
 
 <style scoped>
+.lines-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.lines-toolbar .grow {
+  flex: 1;
+}
+.lines-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
 .center {
   display: flex;
   flex-direction: column;
