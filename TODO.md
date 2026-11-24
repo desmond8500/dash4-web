@@ -1,5 +1,22 @@
 # TODO
 
+## Application
+
+- [ ] Est ce possible que les textarea aient les meme fonctions que l'éditeur markdown de vs code par exemple lorsquon fait un tiret et qu'on va a la ligne un tiret est ajouté en avance etc
+  - [ ] que le texte soit mis en forme au fur et à mesure qu'on saisi
+
+## Stock
+
+- [ ] Il me faut une page ou une section pour gérer mon outillage
+  - [ ] Ils seront basé et liés sur les articles  
+  - [ ] ajoute un système de pret pour quand je le donne à quelqu'un avec un ssytème de rappel
+
+## Page de devis
+
+- [ ] le tableau déborde sur la card à corriger
+- [ ] Permettre de mettre la carte section en pleine page pour avoir une meilleure lisibilité
+- [ ] permettre d'afficher ou non les informations de l'entreprise sur le devis, devis neutre
+
 ## Gestion du parc automobile
 
 - [x] Ajoute une partie gestion de véhicules et scooters — menu « Parc automobile » (web), « Véhicules » sur l'accueil du mobile
