@@ -4,6 +4,7 @@
 
 - [ ] Ajouter un bouton qui redirige vers le haut de la page (web et mobile)
 - [ ] Réarrager les formulaires pour que les contenu des champs soient lisibles
+- [ ] toggle de la sidebar
 
 ## Modèles de devis
 
