@@ -241,3 +241,8 @@ button.link:hover {
   color: var(--p-primary-color);
   font-weight: 600;
 }
+
+/* Page figée quand une section du devis est en plein écran */
+body.no-scroll {
+  overflow: hidden;
+}

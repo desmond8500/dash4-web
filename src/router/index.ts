@@ -228,6 +228,19 @@ export const router = createRouter({
           meta: { title: 'Icônes des plans', permissions: ['stock.view', 'sites.view', 'sites.view.own'] },
         },
         {
+          path: 'stock/outillage',
+          name: 'tools',
+          component: () => import('@/views/ToolsView.vue'),
+          meta: { title: 'Outillage', permissions: ['tools.view', 'tools.view.own'] },
+        },
+        {
+          path: 'stock/outillage/:id(\\d+)',
+          name: 'tool',
+          component: () => import('@/views/ToolDetailView.vue'),
+          props: true,
+          meta: { title: 'Outil', permissions: ['tools.view', 'tools.view.own'] },
+        },
+        {
           path: 'parc',
           name: 'vehicles',
           component: () => import('@/views/VehiclesView.vue'),

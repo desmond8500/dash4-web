@@ -74,6 +74,7 @@ const header = reactive({
   discount_rate: 0,
   bank_account_id: null as number | null,
   show_signature: true,
+  is_neutral: false,
   introduction: '',
   payment_terms: '',
   notes: '',
@@ -89,6 +90,7 @@ function fillHeader(q: Quote): void {
     discount_rate: q.discount_rate,
     bank_account_id: q.bank_account_id,
     show_signature: q.show_signature,
+    is_neutral: q.is_neutral ?? false,
     introduction: q.introduction ?? '',
     payment_terms: q.payment_terms ?? '',
     notes: q.notes ?? '',
@@ -183,6 +185,12 @@ function saveHeader(field: keyof typeof header): void {
     return
   }
   void run(() => api.quotes.update(id(), payload))
+}
+
+/** Devis neutre : réglage du PDF, modifiable même sur un devis accepté. */
+function saveNeutral(value: boolean): void {
+  if (!quote.value?.can.update) return
+  void run(() => api.quotes.update(id(), { is_neutral: value }))
 }
 
 function setStatus(action: StatusAction): void {
@@ -620,9 +628,16 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
                   <span v-else>{{ quote.bank_account?.bank_name ?? 'Aucun' }}</span>
                 </div>
                 <label class="switch">
-                  <ToggleSwitch v-model="header.show_signature" :disabled="!editable" @update:model-value="saveHeader('show_signature')" />
+                  <ToggleSwitch v-model="header.show_signature" :disabled="!editable || header.is_neutral" @update:model-value="saveHeader('show_signature')" />
                   Signature et cachet sur le PDF
                 </label>
+                <label class="switch">
+                  <ToggleSwitch v-model="header.is_neutral" :disabled="!quote.can.update" @update:model-value="saveNeutral" />
+                  Devis neutre
+                </label>
+                <p v-if="header.is_neutral" class="muted small">
+                  Le PDF et l'e-mail ne portent ni logo, ni coordonnées, ni mentions, ni banque, ni signature, ni conditions générales de l'entreprise.
+                </p>
                 <p class="muted small">
                   Créé le {{ formatDate(quote.created_at) }}<template v-if="quote.creator"> par {{ quote.creator.full_name }}</template>.
                 </p>

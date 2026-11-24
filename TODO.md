@@ -2,20 +2,20 @@
 
 ## Application
 
-- [ ] Est ce possible que les textarea aient les meme fonctions que l'éditeur markdown de vs code par exemple lorsquon fait un tiret et qu'on va a la ligne un tiret est ajouté en avance etc
-  - [ ] que le texte soit mis en forme au fur et à mesure qu'on saisi
+- [x] Est ce possible que les textarea aient les meme fonctions que l'éditeur markdown de vs code par exemple lorsquon fait un tiret et qu'on va a la ligne un tiret est ajouté en avance etc — Entrée reprend la puce (- , 1. → 2. , - [ ] , >), une puce vide arrête la liste, Tab / Maj+Tab décalent ; Ctrl+Z annule
+  - [x] que le texte soit mis en forme au fur et à mesure qu'on saisi — bouton « En direct » : le texte mis en forme s'affiche sous la zone pendant la saisie (réglage gardé pour toutes les zones)
 
 ## Stock
 
-- [ ] Il me faut une page ou une section pour gérer mon outillage
-  - [ ] Ils seront basé et liés sur les articles  
-  - [ ] ajoute un système de pret pour quand je le donne à quelqu'un avec un ssytème de rappel
+- [x] Il me faut une page ou une section pour gérer mon outillage — menu « Outillage » (Stock › Outillage) : outils, disponibilité, qui les a, prêts en cours
+  - [x] Ils seront basé et liés sur les articles — chaque outil est lié à un article du stock (nom repris), plusieurs exemplaires d'un coup avec numéros d'inventaire
+  - [x] ajoute un système de pret pour quand je le donne à quelqu'un avec un ssytème de rappel — prêt à un membre de l'équipe ou à une personne extérieure, date de retour, retour avec l'état ; rappels la veille, le jour même puis tous les 3 jours de retard, et bouton « Rappel »
 
 ## Page de devis
 
-- [ ] le tableau déborde sur la card à corriger
-- [ ] Permettre de mettre la carte section en pleine page pour avoir une meilleure lisibilité
-- [ ] permettre d'afficher ou non les informations de l'entreprise sur le devis, devis neutre
+- [x] le tableau déborde sur la card à corriger — le tableau défile dans la carte de la section
+- [x] Permettre de mettre la carte section en pleine page pour avoir une meilleure lisibilité — bouton plein écran sur chaque section (Échap pour sortir)
+- [x] permettre d'afficher ou non les informations de l'entreprise sur le devis, devis neutre — réglage « Devis neutre » (PDF et e-mail sans logo, coordonnées, mentions, banque, signature ni conditions générales), modifiable même sur un devis accepté
 
 ## Gestion du parc automobile
 

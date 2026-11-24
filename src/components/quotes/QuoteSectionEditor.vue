@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -55,6 +55,21 @@ const router = useRouter()
 
 // Lecture ou formulaires : en lecture, les lignes sont un tableau simple, plus lisible
 const formsOpen = ref(props.forms ?? false)
+
+// Section en plein écran, pour lire et modifier les longues sections confortablement (Échap pour sortir)
+const fullscreen = ref(false)
+function onKey(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && fullscreen.value && !document.querySelector('.p-dialog-mask, .p-overlay-mask')) fullscreen.value = false
+}
+watch(fullscreen, (on) => {
+  document.body.classList.toggle('no-scroll', on)
+  if (on) window.addEventListener('keydown', onKey)
+  else window.removeEventListener('keydown', onKey)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  if (fullscreen.value) document.body.classList.remove('no-scroll')
+})
 watch(() => props.forms, (v) => (formsOpen.value = v ?? false))
 const showForms = computed(() => props.editable && formsOpen.value)
 const columns = computed(() => 5 + (props.editPrices ? 2 : 0) + (props.showPrices ? 2 : 0) + (props.editable || props.canLink ? 1 : 0))
@@ -203,7 +218,8 @@ const money = (v: number) => formatMoney(v, props.currency)
 </script>
 
 <template>
-  <section class="quote-section" :class="{ hidden: !props.section.is_visible }">
+  <Teleport to="body" :disabled="!fullscreen">
+  <section class="quote-section" :class="{ hidden: !props.section.is_visible, fullscreen }">
     <header>
       <InputText
         v-model="title"
@@ -231,6 +247,16 @@ const money = (v: number) => formatMoney(v, props.currency)
         title="Afficher ou masquer les formulaires des lignes"
         @click="formsOpen = !formsOpen"
       />
+      <Button
+        :icon="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
+        text
+        rounded
+        size="small"
+        severity="secondary"
+        :aria-label="fullscreen ? 'Quitter le plein écran' : 'Afficher la section en plein écran'"
+        :title="fullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran'"
+        @click="fullscreen = !fullscreen"
+      />
       <template v-if="props.editable && showForms">
         <Button
           icon="pi pi-sort-amount-down"
@@ -248,6 +274,7 @@ const money = (v: number) => formatMoney(v, props.currency)
       </template>
     </header>
 
+    <div class="table-wrap">
     <table class="lines">
       <thead>
         <tr>
@@ -420,6 +447,7 @@ const money = (v: number) => formatMoney(v, props.currency)
         </tr>
       </tfoot>
     </table>
+    </div>
     <div class="proposal">
       <button v-if="!proposalOpen" type="button" class="link small" @click="proposalOpen = true">
         <i class="pi pi-align-left" /> {{ props.canEditProposal ? 'Ajouter la proposition technique de cette section' : '' }}
@@ -449,6 +477,7 @@ const money = (v: number) => formatMoney(v, props.currency)
       <ArticlePicker placeholder="Rechercher un article (désignation, référence)…" @select="pickLinked" />
     </Dialog>
   </section>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -457,6 +486,25 @@ const money = (v: number) => formatMoney(v, props.currency)
   border-radius: 10px;
   padding: 0.75rem;
   background: var(--p-content-background);
+  min-width: 0;
+}
+
+/* Plein écran : la section occupe toute la fenêtre (les fenêtres PrimeVue, à partir de 1100, restent au-dessus) */
+.quote-section.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  border-radius: 0;
+  border: none;
+  padding: 1rem 1.5rem;
+  overflow: auto;
+  opacity: 1;
+}
+
+/* Le tableau défile dans la carte au lieu d'en déborder */
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .quote-section.hidden {
@@ -467,12 +515,22 @@ const money = (v: number) => formatMoney(v, props.currency)
 header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
+.fullscreen header {
+  position: sticky;
+  top: -1rem;
+  z-index: 2;
+  background: var(--p-content-background);
+  padding: 0.5rem 0;
+}
+
 .title {
-  flex: 1;
+  flex: 1 1 14rem;
+  min-width: 10rem;
   font-weight: 600;
 }
 
@@ -492,7 +550,12 @@ header {
 
 .lines {
   width: 100%;
+  min-width: 44rem;
   border-collapse: collapse;
+}
+
+.lines th:nth-child(2) {
+  min-width: 14rem;
 }
 
 .lines th {
