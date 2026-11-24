@@ -5,6 +5,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
+import ArticleOption from '@/components/stock/ArticleOption.vue'
 import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -90,7 +91,7 @@ async function save(): Promise<void> {
       <div v-if="auth.can('stock.view')" class="form-field form-field--full">
         <label for="eq-article">Article du stock</label>
         <AutoComplete v-model="article" input-id="eq-article" :suggestions="suggestions" option-label="designation" force-selection placeholder="Rechercher un article (facultatif)" @complete="searchArticles" @option-select="(e) => onArticle(e.value)" @clear="onArticle(null)">
-          <template #option="{ option }">{{ option.designation }}<small v-if="option.reference" class="muted"> · {{ option.reference }}</small></template>
+          <template #option="{ option }"><ArticleOption :article="option" /></template>
         </AutoComplete>
       </div>
       <div class="form-field"><label for="eq-name">Nom</label><InputText id="eq-name" v-model="form.name" placeholder="Enregistreur, caméra entrée…" /></div>
