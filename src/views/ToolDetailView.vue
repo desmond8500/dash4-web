@@ -28,6 +28,8 @@ import ToolFormDialog from '@/components/tools/ToolFormDialog.vue'
 import ToolLendDialog from '@/components/tools/ToolLendDialog.vue'
 import ToolReturnDialog from '@/components/tools/ToolReturnDialog.vue'
 import ToolLabelsDialog from '@/components/tools/ToolLabelsDialog.vue'
+import RecordPhoto from '@/components/RecordPhoto.vue'
+import PhotoGallery from '@/components/PhotoGallery.vue'
 
 /** Fiche d'un outil : article lié, état, prêt en cours (retour, rappel, prolongation), historique des prêts, documents. */
 const props = defineProps<{ id: string }>()
@@ -123,7 +125,15 @@ function removeTool(): void {
     <template v-else>
       <div class="page-header">
         <Button icon="pi pi-arrow-left" text rounded aria-label="Retour à l'outillage" @click="router.push({ name: 'tools' })" />
-        <i class="pi pi-wrench kind-icon" aria-hidden="true" />
+        <RecordPhoto
+          :url="tool.photo_url ?? tool.image_url"
+          :alt="`Photo de ${tool.name}`"
+          icon="pi pi-wrench"
+          :can-edit="tool.can.update"
+          size="96px"
+          :upload="async (f) => (tool = await api.photos.upload('tools', tool!.id, f, f.name))"
+          :remove="async () => (tool = await api.photos.remove('tools', tool!.id))"
+        />
         <div class="grow">
           <h1>{{ tool.name }}</h1>
           <div class="muted">{{ [tool.code, tool.article?.brand, tool.serial_number ? `S/N ${tool.serial_number}` : null].filter(Boolean).join(' · ') }}</div>
@@ -218,6 +228,9 @@ function removeTool(): void {
           </TabPanel>
 
           <TabPanel value="documents">
+            <h3>Photos</h3>
+            <PhotoGallery type="tools" :id="tool.id" :can-add="tool.can.update" :can-manage="tool.can.delete" />
+            <h3>Documents</h3>
             <AttachmentsPanel kind="documents" type="tools" :id="tool.id" :can-add="tool.can.update" :can-manage="tool.can.delete" />
             <h3>Notes</h3>
             <AttachmentsPanel kind="notes" type="tools" :id="tool.id" :can-add="tool.can.update" :can-manage="tool.can.delete" />

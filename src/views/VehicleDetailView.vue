@@ -32,6 +32,8 @@ import MarkdownView from '@/components/MarkdownView.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
+import PhotoGallery from '@/components/PhotoGallery.vue'
+import RecordPhoto from '@/components/RecordPhoto.vue'
 import ExpenseTable from '@/components/accounting/ExpenseTable.vue'
 import ExpenseDialog from '@/components/accounting/ExpenseDialog.vue'
 import VehicleFormDialog from '@/components/fleet/VehicleFormDialog.vue'
@@ -48,7 +50,8 @@ const confirm = useConfirm()
 const vehicle = ref<Vehicle | null>(null)
 const options = ref<VehicleOptions | null>(null)
 const notFound = ref(false)
-const TABS = ['fiche', 'papiers', 'compteur', 'entretiens', 'depenses', 'documents', 'commentaires']
+const TABS = ['fiche', 'photos', 'papiers', 'compteur', 'entretiens', 'depenses', 'documents', 'commentaires']
+const photosCount = ref<number | null>(null)
 const tab = ref(TABS.includes(String(route.query.onglet)) ? String(route.query.onglet) : 'fiche')
 watch(tab, (t) => void router.replace({ query: { ...route.query, onglet: t } }))
 
@@ -235,7 +238,15 @@ function onExpenseSaved(): void {
     <template v-else>
       <div class="page-header">
         <Button icon="pi pi-arrow-left" text rounded aria-label="Retour au parc" @click="router.push({ name: 'vehicles' })" />
-        <i :class="[vehicleIcon(vehicle.kind.value), 'kind-icon']" aria-hidden="true" />
+        <RecordPhoto
+          :url="vehicle.photo_url"
+          :alt="`Photo de ${vehicle.name}`"
+          :icon="vehicleIcon(vehicle.kind.value)"
+          :can-edit="vehicle.can.add_photos"
+          size="96px"
+          :upload="async (f) => (vehicle = await api.photos.upload('vehicles', vehicle!.id, f, f.name))"
+          :remove="async () => (vehicle = await api.photos.remove('vehicles', vehicle!.id))"
+        />
         <div class="grow">
           <h1>{{ vehicle.name }}</h1>
           <div class="muted">{{ vehicleSubtitle(vehicle) || vehicle.kind.label }}</div>
@@ -260,6 +271,7 @@ function onExpenseSaved(): void {
       <Tabs v-model:value="tab">
         <TabList>
           <Tab value="fiche">Fiche</Tab>
+          <Tab value="photos">Photos <span v-if="photosCount" class="count">{{ photosCount }}</span></Tab>
           <Tab value="papiers">Papiers <span class="count">{{ (vehicle.papers ?? []).filter((p) => p.current).length }}</span></Tab>
           <Tab value="compteur">Kilométrage</Tab>
           <Tab value="entretiens">Entretiens <span class="count">{{ vehicle.maintenances?.length ?? 0 }}</span></Tab>
@@ -307,6 +319,11 @@ function onExpenseSaved(): void {
                 </template>
               </Card>
             </div>
+          </TabPanel>
+
+          <TabPanel value="photos">
+            <p class="muted small">État du véhicule, dégâts, compteur, papiers… Le conducteur attitré peut aussi en ajouter depuis son téléphone.</p>
+            <PhotoGallery type="vehicles" :id="vehicle.id" :can-add="vehicle.can.add_photos" :can-manage="vehicle.can.delete" @changed="(n) => (photosCount = n)" />
           </TabPanel>
 
           <TabPanel value="papiers">

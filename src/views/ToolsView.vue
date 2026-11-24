@@ -151,6 +151,14 @@ function openReturn(loan: ToolLoan): void {
     >
       <Column v-if="canLabels" selection-mode="multiple" header-style="width: 3rem" />
       <template #empty>{{ search || filter !== 'all' ? 'Aucun outil ne correspond.' : 'Aucun outil enregistré : créez-les à partir des articles du stock.' }}</template>
+      <Column header="" style="width: 4.5rem">
+        <template #body="{ data }">
+          <span class="thumb">
+            <img v-if="data.image_url" :src="data.image_url" alt="" loading="lazy" />
+            <i v-else class="pi pi-wrench" aria-hidden="true" />
+          </span>
+        </template>
+      </Column>
       <Column header="Outil">
         <template #body="{ data }">
           <strong>{{ data.name }}</strong>
@@ -221,6 +229,23 @@ function openReturn(loan: ToolLoan): void {
 }
 .small {
   font-size: 0.85rem;
+}
+.thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--p-content-border-color);
+  color: var(--p-primary-color);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .late {
   color: var(--p-red-500);

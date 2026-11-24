@@ -79,7 +79,10 @@ const alertsCount = computed(() => vehicles.value.filter((v) => alertLevel(v) > 
       <Column header="Véhicule">
         <template #body="{ data }">
           <div class="vehicle">
-            <i :class="vehicleIcon(data.kind.value)" aria-hidden="true" />
+            <span class="thumb">
+              <img v-if="data.photo_url" :src="data.photo_url" alt="" loading="lazy" />
+              <i v-else :class="vehicleIcon(data.kind.value)" aria-hidden="true" />
+            </span>
             <div>
               <strong>{{ data.name }}</strong>
               <div class="muted small">{{ vehicleSubtitle(data) || data.kind.label }}</div>
@@ -119,7 +122,24 @@ const alertsCount = computed(() => vehicles.value.filter((v) => alertLevel(v) > 
   gap: 0.75rem;
   align-items: center;
 }
-.vehicle > i {
+.thumb {
+  flex: none;
+  width: 64px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--p-content-hover-background);
+  border: 1px solid var(--p-content-border-color);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.thumb i {
   font-size: 1.25rem;
   color: var(--p-primary-color);
 }
