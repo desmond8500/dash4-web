@@ -5,13 +5,13 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import RadioButton from 'primevue/radiobutton'
 import SelectButton from 'primevue/selectbutton'
-import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { ApiError, formatMoney, INVOICE_SCOPES } from '@dash4/shared'
 import type { Currency, Invoice, InvoiceCreatePayload, InvoiceScope, Quote } from '@dash4/shared'
 import { api } from '@/services/api'
 import { defaultInvoiceTitle, invoicePreview } from '@/utils/invoices'
+import ClientPicker, { type ClientOption } from '@/components/ClientPicker.vue'
 
 /**
  * Nouvelle facture (brouillon). Avec un devis : partie facturée (tout, matériel, matériel + accessoires,
@@ -29,8 +29,7 @@ const percent = ref(100)
 const title = ref('')
 const titleTouched = ref(false)
 const depositId = ref<number | null>(null)
-const client = ref<{ id: number; name: string } | null>(null)
-const suggestions = ref<Array<{ id: number; name: string }>>([])
+const client = ref<ClientOption | null>(null)
 const error = ref<string | null>(null)
 const saving = ref(false)
 
@@ -57,14 +56,6 @@ watch([scope, percent], () => {
   if (scope.value === 'remainder') percent.value = 100
   if (!titleTouched.value) title.value = defaultInvoiceTitle(scope.value, percent.value)
 })
-
-async function search(event: AutoCompleteCompleteEvent): Promise<void> {
-  try {
-    suggestions.value = (await api.clients.list({ search: event.query, per_page: 10 })).data.map((c) => ({ id: c.id, name: c.name }))
-  } catch {
-    suggestions.value = []
-  }
-}
 
 async function save(): Promise<void> {
   error.value = null
@@ -153,17 +144,7 @@ async function save(): Promise<void> {
 
       <div v-else class="form-field form-field--full">
         <label for="i-client">Client</label>
-        <AutoComplete
-          v-model="client"
-          input-id="i-client"
-          :suggestions="suggestions"
-          option-label="name"
-          placeholder="Rechercher un client"
-          force-selection
-          dropdown
-          :delay="250"
-          @complete="search"
-        />
+        <ClientPicker v-model="client" input-id="i-client" />
       </div>
 
       <div v-if="!props.quote || source === 'quote'" class="form-field form-field--full">

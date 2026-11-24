@@ -21,7 +21,11 @@ const tables = computed(() => types.value.filter((t) => t.value !== 'fec'))
 const fec = computed(() => types.value.find((t) => t.value === 'fec'))
 
 onMounted(async () => {
-  types.value = await api.exports.types()
+  try {
+    types.value = await api.exports.types()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : (e as Error).message, life: 5000 })
+  }
 })
 
 function pick(key: string): void {

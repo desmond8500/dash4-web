@@ -8,15 +8,18 @@ import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import { JOURNAL_TYPES } from '@dash4/shared'
 import type { Journal, JournalType } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
 import JournalTable from '@/components/journals/JournalTable.vue'
+import { apiErrorMessage } from '@/utils/errors'
 
 const auth = useAuthStore()
 const router = useRouter()
+const toast = useToast()
 const journals = ref<Journal[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -29,6 +32,8 @@ async function load(): Promise<void> {
     const r = await api.journals.list({ search: filters.search || undefined, type: filters.type ?? undefined, mine: filters.mine, page: filters.page, per_page: 50 })
     journals.value = r.data
     total.value = r.meta.total
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: apiErrorMessage(e), life: 5000 })
   } finally {
     loading.value = false
   }

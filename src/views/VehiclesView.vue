@@ -10,18 +10,21 @@ import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
+import { useToast } from 'primevue/usetoast'
 import { alertText, fleetSeverity, formatKm, vehicleSubtitle } from '@dash4/shared'
 import type { Vehicle, VehicleKind, VehicleOptions } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { alertLevel, vehicleIcon } from '@/utils/fleet'
 import { searchOnly } from '@/utils/listSearch'
+import { apiErrorMessage } from '@/utils/errors'
 import VehicleFormDialog from '@/components/fleet/VehicleFormDialog.vue'
 
 /** Parc automobile : véhicules et scooters, avec les papiers et entretiens à surveiller en tête. */
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const vehicles = ref<Vehicle[]>([])
 const options = ref<VehicleOptions | null>(null)
@@ -35,6 +38,8 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     vehicles.value = await api.vehicles.list({ alerts: filter.value === 'alerts', kind: kind.value ?? undefined })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: apiErrorMessage(e), life: 5000 })
   } finally {
     loading.value = false
   }

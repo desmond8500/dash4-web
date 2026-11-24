@@ -6,7 +6,6 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import AutoComplete from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
@@ -20,6 +19,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { formatDate, toApiDate } from '@/utils/projects'
 import { contractSeverity } from '@/utils/contracts'
 import FlatRatesDialog from '@/components/contracts/FlatRatesDialog.vue'
+import ClientPicker, { type ClientOption } from '@/components/ClientPicker.vue'
 
 /** Contrats de maintenance : à facturer, échéances proches, création. */
 const auth = useAuthStore()
@@ -33,8 +33,7 @@ const filter = ref<'all' | 'due' | 'ending' | 'active'>(route.query.filtre === '
 const search = ref('')
 const ratesOpen = ref(false)
 const createOpen = ref(false)
-const client = ref<{ id: number; name: string } | null>(null)
-const clients = ref<Array<{ id: number; name: string }>>([])
+const client = ref<ClientOption | null>(null)
 const form = ref({ title: 'Contrat de maintenance', start: new Date() as Date | null, end: null as Date | null, period: 'monthly' as BillingPeriod })
 const error = ref<string | null>(null)
 
@@ -63,9 +62,6 @@ watch(search, () => {
   timer = setTimeout(load, 300)
 })
 
-async function searchClients(e: { query: string }): Promise<void> {
-  clients.value = (await api.clients.list({ search: e.query, per_page: 10 })).data.map((c) => ({ id: c.id, name: c.name }))
-}
 async function create(): Promise<void> {
   if (!client.value || !form.value.title.trim() || !form.value.start) return void (error.value = 'Choisissez le client, le titre et la date de début.')
   try {
@@ -112,7 +108,7 @@ async function create(): Promise<void> {
     <Dialog v-model:visible="createOpen" header="Nouveau contrat" modal :style="{ width: '520px' }">
       <form id="contract-new" class="form-grid" @submit.prevent="create">
         <Message v-if="error" class="form-field--full" severity="error" :closable="false">{{ error }}</Message>
-        <div class="form-field form-field--full"><label for="ct-client">Client</label><AutoComplete v-model="client" input-id="ct-client" :suggestions="clients" option-label="name" force-selection placeholder="Rechercher un client" @complete="searchClients" /></div>
+        <div class="form-field form-field--full"><label for="ct-client">Client</label><ClientPicker v-model="client" input-id="ct-client" /></div>
         <div class="form-field form-field--full"><label for="ct-title">Titre</label><InputText id="ct-title" v-model="form.title" /></div>
         <div class="form-field"><label for="ct-start">Début</label><DatePicker v-model="form.start" input-id="ct-start" date-format="dd/mm/yy" /></div>
         <div class="form-field"><label for="ct-end">Échéance</label><DatePicker v-model="form.end" input-id="ct-end" date-format="dd/mm/yy" show-button-bar /></div>

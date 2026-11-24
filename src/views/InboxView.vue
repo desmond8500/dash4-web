@@ -6,7 +6,6 @@ import SelectButton from 'primevue/selectbutton'
 import InputText from 'primevue/inputtext'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Dialog from 'primevue/dialog'
-import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
@@ -14,6 +13,7 @@ import { ApiError, PRIORITY_LABELS } from '@dash4/shared'
 import type { InboundEmail, InboundEmailMeta, Priority } from '@dash4/shared'
 import { api } from '@/services/api'
 import { formatDateTime } from '@/utils/clientRequests'
+import ClientPicker, { type ClientOption } from '@/components/ClientPicker.vue'
 
 /**
  * Boîte mail des demandes : e-mails reçus sur l'adresse dédiée (relevée toutes les 5 minutes),
@@ -90,17 +90,13 @@ async function download(index: number, name: string): Promise<void> {
 
 // Transformer en demande
 const convertOpen = ref(false)
-const convert = ref({ body: '', priority: 'normal' as Priority, client: null as { id: number; name: string } | null })
-const clientSuggestions = ref<Array<{ id: number; name: string }>>([])
+const convert = ref({ body: '', priority: 'normal' as Priority, client: null as ClientOption | null })
 const priorities = (Object.entries(PRIORITY_LABELS) as Array<[Priority, string]>).map(([value, label]) => ({ value, label }))
 const converting = ref(false)
 function openConvert(): void {
   const e = selected.value!
   convert.value = { body: `${e.subject}\n\n${(e.body_text ?? '').slice(0, 4000)}`.trim(), priority: 'normal', client: e.client }
   convertOpen.value = true
-}
-async function searchClients(event: AutoCompleteCompleteEvent): Promise<void> {
-  clientSuggestions.value = (await api.clients.list({ search: event.query, per_page: 10 }).catch(() => ({ data: [] }))).data.map((c) => ({ id: c.id, name: c.name }))
 }
 async function doConvert(): Promise<void> {
   converting.value = true
@@ -191,7 +187,7 @@ const statusOptions = computed(() => [
       <div class="form-grid">
         <div class="form-field form-field--full">
           <label for="c-client">Client</label>
-          <AutoComplete v-model="convert.client" input-id="c-client" :suggestions="clientSuggestions" option-label="name" placeholder="Pas encore client" force-selection dropdown :delay="250" @complete="searchClients" />
+          <ClientPicker v-model="convert.client" input-id="c-client" placeholder="Pas encore client" />
         </div>
         <div class="form-field form-field--full">
           <label>Priorité</label>
