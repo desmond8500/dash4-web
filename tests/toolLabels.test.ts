@@ -19,4 +19,16 @@ describe('étiquettes de l’outillage', () => {
     expect(toolLabelsHtml(tools, { format: 'a4-65', origin: null, skip: 3 }).match(/label blank/g)).toHaveLength(3)
     expect(toolLabelsHtml(tools, { format: 'roll', origin: null, skip: 3 })).not.toContain('label blank')
   })
+
+  it('prépare les rubans d’étiqueteuse de 24, 12 et 9 mm', () => {
+    const t24 = toolLabelsHtml(tools, { format: 'tape-24', origin: 'https://dash4.yonkou.info', skip: 2 })
+    expect(t24).toContain('size: 60mm 24mm')
+    expect(t24).not.toContain('label blank')
+    // Rubans étroits : QR code court (version 1, 21 modules + marge = 23)
+    const t9 = toolLabelsHtml(tools, { format: 'tape-9', origin: 'https://dash4.yonkou.info' })
+    expect(t9).toContain('size: 30mm 9mm')
+    expect(t9.match(/viewBox="0 0 23 23"/g)).toHaveLength(2)
+    expect(t9).toContain('<div class="code">Escabeau</div>')
+    expect(toolLabelsHtml(tools, { format: 'tape-12', origin: null })).toContain('size: 40mm 12mm')
+  })
 })

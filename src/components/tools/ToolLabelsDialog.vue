@@ -7,7 +7,7 @@ import Message from 'primevue/message'
 import Select from 'primevue/select'
 import { qrSvg, toolQrContent } from '@dash4/shared'
 import type { Tool } from '@dash4/shared'
-import { LABEL_FORMATS, printToolLabels, toolLabelsHtml, type LabelFormat } from '@/utils/toolLabels'
+import { isSingleLabel, LABEL_FORMATS, printToolLabels, toolLabelsHtml, type LabelFormat } from '@/utils/toolLabels'
 
 /**
  * Étiquettes QR des outils choisis : format de planche, étiquettes déjà utilisées à sauter, aperçu, impression
@@ -21,8 +21,15 @@ const format = ref<LabelFormat>('a4-24')
 const skip = ref<number | null>(0)
 const blocked = ref(false)
 const info = computed(() => LABEL_FORMATS.find((f) => f.value === format.value)!)
-const pages = computed(() => Math.max(1, Math.ceil((props.tools.length + (format.value === 'roll' ? 0 : skip.value ?? 0)) / info.value.perPage)))
-const sample = computed(() => (props.tools[0] ? qrSvg(toolQrContent(props.tools[0].id, window.location.origin), { margin: 1 }) : ''))
+const pages = computed(() => Math.max(1, Math.ceil((props.tools.length + (isSingleLabel(format.value) ? 0 : skip.value ?? 0)) / info.value.perPage)))
+const sample = computed(() =>
+  props.tools[0]
+    ? info.value.shortCode
+      ? qrSvg(toolQrContent(props.tools[0].id), { margin: 1, errorLevel: 'L' })
+      : qrSvg(toolQrContent(props.tools[0].id, window.location.origin), { margin: 1 })
+    : '',
+)
+const tape = computed(() => format.value.startsWith('tape-'))
 
 watch(visible, (open) => {
   if (!open) return
@@ -59,7 +66,11 @@ function print(): void {
         <label for="lb-format">Format</label>
         <Select id="lb-format" v-model="format" :options="LABEL_FORMATS" option-label="label" option-value="value" />
       </div>
-      <div v-if="format !== 'roll'" class="form-field form-field--full">
+      <p v-if="tape" class="form-field--full muted small">
+        Dans la fenêtre d'impression, choisissez l'étiqueteuse et le ruban de la même largeur, marges « Aucune », échelle 100 %.
+        <template v-if="info.shortCode">Sur ce ruban étroit, le QR code contient seulement le numéro de l'outil : il se lit avec l'application mobile Dash4.</template>
+      </p>
+      <div v-if="!isSingleLabel(format)" class="form-field form-field--full">
         <label for="lb-skip">Étiquettes déjà utilisées sur la planche</label>
         <InputNumber v-model="skip" input-id="lb-skip" :min="0" :max="info.perPage - 1" show-buttons />
         <small class="muted">Les premières étiquettes restent vides, pour finir une planche entamée.</small>
