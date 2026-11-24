@@ -16,7 +16,7 @@ import Tabs from 'primevue/tabs'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { ApiError, formatMoney, loanDueText, toolSeverity } from '@dash4/shared'
+import { ApiError, formatMoney, loanDueText, qrSvg, toolQrContent, toolSeverity } from '@dash4/shared'
 import type { Tool, ToolLoan, ToolOptions } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useSettingsStore } from '@/stores/settings'
@@ -27,6 +27,7 @@ import CommentsPanel from '@/components/CommentsPanel.vue'
 import ToolFormDialog from '@/components/tools/ToolFormDialog.vue'
 import ToolLendDialog from '@/components/tools/ToolLendDialog.vue'
 import ToolReturnDialog from '@/components/tools/ToolReturnDialog.vue'
+import ToolLabelsDialog from '@/components/tools/ToolLabelsDialog.vue'
 
 /** Fiche d'un outil : article lié, état, prêt en cours (retour, rappel, prolongation), historique des prêts, documents. */
 const props = defineProps<{ id: string }>()
@@ -49,6 +50,8 @@ const returnOpen = ref(false)
 const dueOpen = ref(false)
 const newDue = ref<Date | null>(null)
 const loan = computed(() => tool.value?.current_loan ?? null)
+const labelsOpen = ref(false)
+const qr = computed(() => (tool.value ? qrSvg(toolQrContent(tool.value.id, window.location.origin), { margin: 2, title: tool.value.title }) : ''))
 const errorDetail = (e: unknown) => (e instanceof ApiError ? (Object.values(e.errors)[0]?.[0] ?? e.message) : (e as Error).message)
 
 async function load(): Promise<void> {
@@ -127,6 +130,7 @@ function removeTool(): void {
         </div>
         <Tag :value="tool.status.label" :severity="toolSeverity(tool.status.value)" />
         <Button v-if="tool.can.lend && !loan && tool.status.value === 'available'" label="Prêter" icon="pi pi-sign-out" @click="lendOpen = true" />
+        <Button label="Étiquette QR" icon="pi pi-qrcode" text @click="labelsOpen = true" />
         <Button v-if="tool.can.update" label="Modifier" icon="pi pi-pencil" text @click="editOpen = true" />
         <Button v-if="tool.can.delete" icon="pi pi-trash" text rounded severity="danger" aria-label="Supprimer" @click="removeTool" />
       </div>
@@ -163,6 +167,11 @@ function removeTool(): void {
           <TabPanel value="fiche">
             <Card>
               <template #content>
+                <div class="qr-box">
+                  <!-- eslint-disable-next-line vue/no-v-html -- SVG produit par qrSvg, titre échappé -->
+                  <div class="qr" v-html="qr" />
+                  <span class="muted small">À scanner avec l'application mobile</span>
+                </div>
                 <dl class="facts">
                   <dt>Article du stock</dt>
                   <dd>
@@ -218,6 +227,7 @@ function removeTool(): void {
       </Tabs>
 
       <ToolFormDialog v-model:visible="editOpen" :tool="tool" :options="options" @saved="(list) => (tool = list[0] ?? tool)" />
+      <ToolLabelsDialog v-model:visible="labelsOpen" :tools="[tool]" />
       <ToolLendDialog v-model:visible="lendOpen" :tool="tool" :options="options" @saved="(t) => (tool = t)" />
       <ToolReturnDialog v-model:visible="returnOpen" :tool="tool" :loan="loan" :options="options" @saved="(t) => (tool = t)" />
       <Dialog v-model:visible="dueOpen" header="Date de retour" modal :style="{ width: '360px' }">
@@ -267,6 +277,23 @@ function removeTool(): void {
 }
 .notes {
   margin-top: 1rem;
+}
+.qr-box {
+  float: right;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0 0.5rem 1rem;
+}
+.qr {
+  width: 120px;
+  height: 120px;
+  background: #fff;
+}
+.qr :deep(svg) {
+  width: 100%;
+  height: 100%;
 }
 .small {
   font-size: 0.85rem;

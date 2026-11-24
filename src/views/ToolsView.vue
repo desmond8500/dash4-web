@@ -19,6 +19,7 @@ import { searchOnly } from '@/utils/listSearch'
 import ToolFormDialog from '@/components/tools/ToolFormDialog.vue'
 import ToolLendDialog from '@/components/tools/ToolLendDialog.vue'
 import ToolReturnDialog from '@/components/tools/ToolReturnDialog.vue'
+import ToolLabelsDialog from '@/components/tools/ToolLabelsDialog.vue'
 
 /** Outillage : les outils (liés aux articles du stock), qui les a, et les prêts à rendre ou en retard. */
 const auth = useAuthStore()
@@ -41,6 +42,11 @@ const returnFor = ref<{ tool: Pick<Tool, 'id' | 'title' | 'condition'>; loan: To
 const lendOpen = computed({ get: () => !!lendFor.value, set: (v) => !v && (lendFor.value = null) })
 const returnOpen = computed({ get: () => !!returnFor.value, set: (v) => !v && (returnFor.value = null) })
 const canLend = computed(() => auth.can('tools.lend'))
+const canLabels = computed(() => auth.can('tools.view'))
+const selected = ref<Tool[]>([])
+const labelsOpen = ref(false)
+/** Étiquettes : les outils cochés, sinon ceux de la liste affichée. */
+const labelTools = computed(() => (selected.value.length ? selected.value : shownTools.value))
 
 watch(view, (v) => void router.replace({ query: { ...route.query, vue: v === 'loans' ? 'prets' : undefined } }))
 
@@ -106,6 +112,15 @@ function openReturn(loan: ToolLoan): void {
     <div class="page-header">
       <Button icon="pi pi-arrow-left" text rounded aria-label="Retour au stock" @click="router.push({ name: 'stock' })" />
       <h1 class="grow">Outillage</h1>
+      <Button
+        v-if="canLabels && view === 'tools'"
+        :label="selected.length ? `Étiquettes QR (${selected.length})` : 'Étiquettes QR'"
+        icon="pi pi-qrcode"
+        severity="secondary"
+        :title="selected.length ? 'Étiquettes des outils cochés' : 'Étiquettes des outils affichés (cochez-en pour choisir)'"
+        :disabled="!labelTools.length"
+        @click="labelsOpen = true"
+      />
       <Button v-if="auth.can('tools.create')" label="Nouvel outil" icon="pi pi-plus" @click="createOpen = true" />
     </div>
     <div class="filters">
@@ -128,11 +143,13 @@ function openReturn(loan: ToolLoan): void {
       v-if="view === 'tools'"
       :value="shownTools"
       :loading="loading"
+      v-model:selection="selected"
       data-key="id"
       row-hover
       class="clickable"
       @row-click="(e) => router.push({ name: 'tool', params: { id: e.data.id } })"
     >
+      <Column v-if="canLabels" selection-mode="multiple" header-style="width: 3rem" />
       <template #empty>{{ search || filter !== 'all' ? 'Aucun outil ne correspond.' : 'Aucun outil enregistré : créez-les à partir des articles du stock.' }}</template>
       <Column header="Outil">
         <template #body="{ data }">
@@ -185,6 +202,7 @@ function openReturn(loan: ToolLoan): void {
     </DataTable>
 
     <ToolFormDialog v-model:visible="createOpen" :tool="null" :options="options" @saved="(list) => (list.length === 1 ? router.push({ name: 'tool', params: { id: list[0]!.id } }) : load())" />
+    <ToolLabelsDialog v-model:visible="labelsOpen" :tools="labelTools" />
     <ToolLendDialog v-model:visible="lendOpen" :tool="lendFor" :options="options" @saved="updated" />
     <ToolReturnDialog v-model:visible="returnOpen" :tool="returnFor?.tool ?? null" :loan="returnFor?.loan ?? null" :options="options" @saved="updated" />
   </div>
