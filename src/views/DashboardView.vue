@@ -7,6 +7,7 @@ import Dialog from 'primevue/dialog'
 import Checkbox from 'primevue/checkbox'
 import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
+import { useToast } from 'primevue/usetoast'
 import { DASHBOARD_WIDGETS, formatMoney } from '@dash4/shared'
 import type { DashboardData, DashboardLayout, DashboardWidgetKey } from '@dash4/shared'
 import { api } from '@/services/api'
@@ -15,15 +16,18 @@ import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate } from '@/utils/projects'
 import { barHeights, monthLabel, moveWidget, toggleWidget, trend } from '@/utils/dashboard'
+import { apiErrorMessage } from '@/utils/errors'
 
 /** Tableau de bord : widgets selon les droits du compte, dans l'ordre choisi par l'utilisateur. */
 const auth = useAuthStore()
 const requests = useClientRequestsStore()
 const settings = useSettingsStore()
 const router = useRouter()
+const toast = useToast()
 
 const data = ref<DashboardData | null>(null)
 const loading = ref(true)
+const loadFailed = ref(false)
 const customizing = ref(false)
 const draft = ref<DashboardLayout>({ order: [], hidden: [] })
 const money = (v: number) => formatMoney(v, settings.currency())
@@ -32,8 +36,12 @@ const w = computed(() => data.value?.widgets ?? {})
 
 async function load(): Promise<void> {
   loading.value = true
+  loadFailed.value = false
   try {
     data.value = await api.dashboard.get()
+  } catch (e) {
+    loadFailed.value = true
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: apiErrorMessage(e), life: 5000 })
   } finally {
     loading.value = false
   }
@@ -66,6 +74,7 @@ const greeting = computed(() => (new Date().getHours() < 18 ? 'Bonjour' : 'Bonso
     </div>
 
     <div v-if="loading && !data" class="center"><ProgressSpinner /></div>
+    <p v-else-if="loadFailed && !data" class="muted">Le tableau de bord n'a pas pu être chargé. <Button label="Réessayer" link size="small" @click="load" /></p>
     <p v-else-if="!visible.length" class="muted">Rien à afficher. « Personnaliser » permet de réafficher les widgets masqués.</p>
 
     <div class="grid">

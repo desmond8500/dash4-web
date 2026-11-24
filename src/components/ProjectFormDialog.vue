@@ -5,7 +5,6 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import Select from 'primevue/select'
-import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import DatePicker from 'primevue/datepicker'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
@@ -15,6 +14,7 @@ import type { Assignee, Project, ProjectPayload, ProjectStatus } from '@dash4/sh
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { fromApiDate, toApiDate } from '@/utils/projects'
+import ClientPicker, { type ClientOption } from '@/components/ClientPicker.vue'
 
 /** Création (project = null) ou modification d'un projet. `clientId` pré-remplit le client. */
 const props = defineProps<{ project: Project | null; clientId?: number | null }>()
@@ -23,8 +23,6 @@ const emit = defineEmits<{ saved: [project: Project] }>()
 
 const auth = useAuthStore()
 const isEdit = computed(() => props.project !== null)
-
-type ClientOption = { id: number; name: string }
 
 const form = reactive({
   name: '',
@@ -39,7 +37,6 @@ const form = reactive({
   description: '',
   is_favorite: false,
 })
-const clientSuggestions = ref<ClientOption[]>([])
 const assignees = ref<Assignee[]>([])
 const errors = ref<Record<string, string[]>>({})
 const generalError = ref<string | null>(null)
@@ -87,15 +84,6 @@ watch(visible, async (open) => {
     }
   }
 })
-
-async function searchClients(event: AutoCompleteCompleteEvent): Promise<void> {
-  try {
-    const result = await api.clients.list({ search: event.query, per_page: 10 })
-    clientSuggestions.value = result.data.map((c) => ({ id: c.id, name: c.name }))
-  } catch {
-    clientSuggestions.value = []
-  }
-}
 
 function fieldError(field: string): string | undefined {
   return errors.value[field]?.[0]
@@ -177,18 +165,7 @@ async function save(): Promise<void> {
 
       <div class="form-field">
         <label for="project-client">Client</label>
-        <AutoComplete
-          v-model="form.client"
-          input-id="project-client"
-          :suggestions="clientSuggestions"
-          option-label="name"
-          placeholder="Rechercher un client"
-          force-selection
-          dropdown
-          :delay="250"
-          :invalid="!!fieldError('client_id')"
-          @complete="searchClients"
-        />
+        <ClientPicker v-model="form.client" input-id="project-client" :invalid="!!fieldError('client_id')" />
         <small v-if="fieldError('client_id')" class="field-error">{{ fieldError('client_id') }}</small>
       </div>
 

@@ -44,7 +44,12 @@ function load(data: Cv): void {
 }
 
 onMounted(async () => {
-  load(await api.cvs.get(Number(route.params.id)))
+  try {
+    load(await api.cvs.get(Number(route.params.id)))
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: errorDetail(e), life: 5000 })
+    void router.push({ name: 'profile' })
+  }
 })
 
 async function save(): Promise<void> {

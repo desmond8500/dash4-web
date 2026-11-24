@@ -6,14 +6,17 @@ import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import { useToast } from 'primevue/usetoast'
 import { formatMoney, type ScheduleItem } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useSettingsStore } from '@/stores/settings'
 import { formatDate } from '@/utils/projects'
 import { groupByMonth } from '@/utils/schedule'
+import { apiErrorMessage } from '@/utils/errors'
 
 const router = useRouter()
 const settings = useSettingsStore()
+const toast = useToast()
 const items = ref<ScheduleItem[]>([])
 const meta = ref({ total: 0, overdue: 0 })
 const months = ref(6)
@@ -29,6 +32,8 @@ async function load(): Promise<void> {
     const res = await api.invoices.schedule(months.value)
     items.value = res.data
     meta.value = res.meta
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: apiErrorMessage(e), life: 5000 })
   } finally {
     loading.value = false
   }

@@ -103,6 +103,12 @@ a {
   flex-basis: 100%;
 }
 
+/* Tablette / écran étroit : un tableau PrimeVue trop large défile sur lui-même plutôt que de
+   déborder de la page (le conteneur interne du DataTable porte cette classe depuis PrimeVue 4). */
+.p-datatable-table-container {
+  overflow-x: auto;
+}
+
 table.list {
   width: 100%;
   border-collapse: collapse;

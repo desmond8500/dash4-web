@@ -3,13 +3,13 @@ import { ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import AutoComplete, { type AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { ApiError } from '@dash4/shared'
 import type { Project, Quote } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import ClientPicker, { type ClientOption } from '@/components/ClientPicker.vue'
 
 /** Nouveau devis : client, projet (facultatif) et objet ; le reste se règle sur la fiche. */
 const props = defineProps<{ clientId?: number | null; projectId?: number | null }>()
@@ -17,13 +17,11 @@ const visible = defineModel<boolean>('visible', { required: true })
 const emit = defineEmits<{ created: [quote: Quote] }>()
 
 const auth = useAuthStore()
-type ClientOption = { id: number; name: string }
 
 const client = ref<ClientOption | null>(null)
 const projectId = ref<number | null>(null)
 const title = ref('')
 const projects = ref<Project[]>([])
-const suggestions = ref<ClientOption[]>([])
 const errors = ref<Record<string, string[]>>({})
 const generalError = ref<string | null>(null)
 const saving = ref(false)
@@ -65,14 +63,6 @@ watch(client, async (c) => {
   if (projectId.value && !projects.value.some((p) => p.id === projectId.value)) projectId.value = null
 })
 
-async function search(event: AutoCompleteCompleteEvent): Promise<void> {
-  try {
-    suggestions.value = (await api.clients.list({ search: event.query, per_page: 10 })).data.map((c) => ({ id: c.id, name: c.name }))
-  } catch {
-    suggestions.value = []
-  }
-}
-
 async function save(): Promise<void> {
   const c = client.value && typeof client.value === 'object' ? client.value : null
   errors.value = {}
@@ -111,18 +101,7 @@ const fieldError = (f: string) => errors.value[f]?.[0]
       <Message v-if="generalError" class="form-field--full" severity="error" :closable="false">{{ generalError }}</Message>
       <div class="form-field form-field--full">
         <label for="q-client">Client</label>
-        <AutoComplete
-          v-model="client"
-          input-id="q-client"
-          :suggestions="suggestions"
-          option-label="name"
-          placeholder="Rechercher un client"
-          force-selection
-          dropdown
-          :delay="250"
-          :invalid="!!fieldError('client_id')"
-          @complete="search"
-        />
+        <ClientPicker v-model="client" input-id="q-client" :invalid="!!fieldError('client_id')" />
         <small v-if="fieldError('client_id')" class="field-error">{{ fieldError('client_id') }}</small>
       </div>
       <div class="form-field form-field--full">

@@ -40,7 +40,11 @@ function reset(): void {
 
 onMounted(async () => {
   reset()
-  cvs.value = await api.cvs.mine()
+  try {
+    cvs.value = await api.cvs.mine()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Chargement impossible', detail: errorDetail(e), life: 5000 })
+  }
 })
 
 async function save(): Promise<void> {
