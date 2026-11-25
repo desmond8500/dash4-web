@@ -139,23 +139,26 @@ const fieldError = (f: string) => errors.value[f]?.[0]
         <InputText id="a-barcode" v-model="form.barcode" :invalid="!!fieldError('barcode')" />
         <small v-if="fieldError('barcode')" class="field-error">{{ fieldError('barcode') }}</small>
       </div>
-      <div class="form-field">
-        <label for="a-category">Catégorie (comme dans les devis)</label>
-        <Select id="a-category" v-model="form.category" :options="categories" option-label="label" option-value="value" />
-      </div>
-      <div class="form-field">
-        <label for="a-unit">Unité</label>
-        <InputText id="a-unit" v-model="form.unit" placeholder="u, m, rouleau…" />
-      </div>
-      <div class="form-field">
-        <label for="a-brand">Marque</label>
-        <Select id="a-brand" v-model="form.brand_id" :options="[{ id: null, name: 'Aucune' }, ...brands]" option-label="name" option-value="id" filter />
-      </div>
-      <div class="form-field">
-        <label for="a-provider">Fournisseur habituel</label>
-        <Select id="a-provider" v-model="form.provider_id" :options="[{ id: null, name: 'Aucun' }, ...providers]" option-label="name" option-value="id" filter />
+      <div class="form-field--full form-row">
+        <div class="form-field">
+          <label for="a-category">Catégorie</label>
+          <Select id="a-category" v-model="form.category" :options="categories" option-label="label" option-value="value" />
+          <small class="muted">Comme dans les devis.</small>
+        </div>
+        <div class="form-field">
+          <label for="a-unit">Unité</label>
+          <InputText id="a-unit" v-model="form.unit" placeholder="u, m, rouleau…" />
+        </div>
+        <div class="form-field">
+          <label for="a-brand">Marque</label>
+          <Select id="a-brand" v-model="form.brand_id" :options="[{ id: null, name: 'Aucune' }, ...brands]" option-label="name" option-value="id" filter />
+        </div>
       </div>
       <div class="form-field--full form-row">
+        <div class="form-field">
+          <label for="a-provider">Fournisseur habituel</label>
+          <Select id="a-provider" v-model="form.provider_id" :options="[{ id: null, name: 'Aucun' }, ...providers]" option-label="name" option-value="id" filter />
+        </div>
         <template v-if="canCosts">
           <div class="form-field">
             <label for="a-cost">Coût d'achat</label>
@@ -167,12 +170,12 @@ const fieldError = (f: string) => errors.value[f]?.[0]
             <small class="muted">Prix de vente : {{ formatMoney(Math.round(form.unit_cost * form.coefficient)) }}</small>
           </div>
         </template>
+      </div>
+      <div class="form-field--full form-row">
         <div class="form-field">
           <label for="a-min">Seuil d'alerte</label>
           <InputNumber fluid v-model="form.min_quantity" input-id="a-min" :min="0" :max-fraction-digits="2" placeholder="Aucun" />
         </div>
-      </div>
-      <div class="form-field--full form-row">
         <div class="form-field">
           <label for="a-location">Emplacement</label>
           <Select id="a-location" v-model="form.storage_location_id" :options="[{ id: null, name: 'Non rangé' }, ...locations]" option-label="name" option-value="id" filter />
@@ -190,11 +193,11 @@ const fieldError = (f: string) => errors.value[f]?.[0]
           </Select>
           <small class="muted">Reprise par ses équipements sur les plans.</small>
         </div>
-        <div v-if="creating" class="form-field">
-          <label for="a-initial">Quantité en stock aujourd'hui</label>
-          <InputNumber fluid v-model="form.initial_quantity" input-id="a-initial" :min="0" :max-fraction-digits="2" placeholder="0" />
-          <small class="muted">Enregistrée comme inventaire, puis suivie par les mouvements.</small>
-        </div>
+      </div>
+      <div v-if="creating" class="form-field">
+        <label for="a-initial">Quantité en stock aujourd'hui</label>
+        <InputNumber fluid v-model="form.initial_quantity" input-id="a-initial" :min="0" :max-fraction-digits="2" placeholder="0" />
+        <small class="muted">Enregistrée comme inventaire, puis suivie par les mouvements.</small>
       </div>
       <div class="form-field form-field--full">
         <label for="a-description">Description</label>
@@ -210,7 +213,7 @@ const fieldError = (f: string) => errors.value[f]?.[0]
 </template>
 
 <style scoped>
-/* Lignes de 2 ou 3 champs (coût, coefficient, seuil ; emplacement, icône, quantité), selon ceux qui s'affichent */
+/* Lignes de 1 à 3 champs (catégorie, unité, marque ; fournisseur, coût, coefficient ; seuil, emplacement, icône), selon ceux qui s'affichent */
 .form-row {
   display: flex;
   gap: 1rem;
