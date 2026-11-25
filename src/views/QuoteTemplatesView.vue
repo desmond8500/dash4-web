@@ -149,7 +149,8 @@ const lineDraft = ref<Line>(emptyLine())
 
 function openLineModal(index: number | null): void {
   lineEditIndex.value = index
-  lineDraft.value = index === null ? emptyLine() : { ...templateForm.value.lines[index] }
+  const existing = index === null ? undefined : templateForm.value.lines[index]
+  lineDraft.value = existing ? { ...existing } : emptyLine()
   lineModalOpen.value = true
 }
 
