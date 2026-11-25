@@ -10,6 +10,8 @@
 
 - [x] Pouvoir ajouter un article du stock et remplir le champ — colonne « Article » dans l'édition d'un modèle : recherche un article, reprend désignation/catégorie/unité (et coût/coefficient avec costs.view)
 - [x] affichier les images des articles s'il sont liés aux articles du stock — vignette (photo ou icône) devant chaque ligne liée, cliquable vers la fiche article
+- [ ] Trier selon la catégorie
+- [ ] utiliser des modales pour modifier ou ajouter des articles à un modèle et afficher un tableau par défaut
 
 ## Stock
 - [x] Choix d'affichage des articles en carte ou en liste — bascule liste/carte à droite des filtres (Stock), gardée d'une visite à l'autre
