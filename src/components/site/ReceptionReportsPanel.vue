@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -122,9 +123,7 @@ const logo = (party: ReceptionParty) => current.value?.parties.find((p) => p.key
 
 async function openPdf(r: ReceptionReport): Promise<void> {
   try {
-    const url = URL.createObjectURL(await api.receptionReports.pdf(r.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.receptionReports.pdf(r.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: errorDetail(e), life: 5000 })
   }

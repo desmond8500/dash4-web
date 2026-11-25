@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -82,9 +83,7 @@ async function save(): Promise<void> {
 
 async function pdf(s: Sheet): Promise<void> {
   try {
-    const url = URL.createObjectURL(await api.sheets.pdf(s.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.sheets.pdf(s.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: errorDetail(e), life: 5000 })
   }

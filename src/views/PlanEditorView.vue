@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -333,9 +334,7 @@ async function openPdf(): Promise<void> {
     clearTimeout(renderTimer)
     await doRender()
   }
-  const url = URL.createObjectURL(await api.plans.pdf(current.value.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.plans.pdf(current.value.id))
 }
 
 // --- Repères : création, modification ----------------------------------------------------

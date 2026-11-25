@@ -89,10 +89,19 @@ export function quantitiesSections<S extends { lines: Array<Pick<QuoteLine, 'cat
     .filter((s) => s.lines.length > 0)
 }
 
-/** Nom du fichier du quantitatif, comme celui que donne l'API (« Quantitatif DEV-2026-0001 - Bâtiment A.csv »). */
-export function quantitiesFilename(number: string, extension: 'pdf' | 'csv', sectionTitle?: string): string {
-  const section = sectionTitle?.replace(/[\\/:*?"<>|]+/g, ' ').trim()
-  return `${`Quantitatif ${number}${section ? ` - ${section}` : ''}`.replace(/\s+/g, ' ').trim()}.${extension}`
+/**
+ * Nom de secours du quantitatif, comme celui que donne l'API :
+ * « Quantitatif - Client - Objet - DEV-2026-0001 - Bâtiment A.csv ».
+ */
+export function quantitiesFilename(
+  quote: { number: string; title: string; client?: { name: string } | null },
+  extension: 'pdf' | 'csv',
+  sectionTitle?: string,
+): string {
+  const parts = ['Quantitatif', quote.client?.name, quote.title, quote.number, sectionTitle]
+    .map((p) => (p ?? '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  return `${parts.join(' - ')}.${extension}`
 }
 
 /** Adresses e-mail saisies (séparées par des virgules, points-virgules ou espaces). */

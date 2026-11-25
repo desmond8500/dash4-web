@@ -88,7 +88,8 @@ describe('quantitatif du devis', () => {
   })
 
   it('nomme le fichier comme l\'API, pour tout le devis ou une section', () => {
-    expect(quantitiesFilename('DEV-2026-0001', 'csv')).toBe('Quantitatif DEV-2026-0001.csv')
-    expect(quantitiesFilename('DEV-2026-0001', 'pdf', 'Bâtiment A / RDC')).toBe('Quantitatif DEV-2026-0001 - Bâtiment A RDC.pdf')
+    const quote = { number: 'DEV-2026-0001', title: 'Alarme', client: { name: 'Hôtel Teranga' } }
+    expect(quantitiesFilename(quote, 'csv')).toBe('Quantitatif - Hôtel Teranga - Alarme - DEV-2026-0001.csv')
+    expect(quantitiesFilename(quote, 'pdf', 'Bâtiment A / RDC')).toBe('Quantitatif - Hôtel Teranga - Alarme - DEV-2026-0001 - Bâtiment A RDC.pdf')
   })
 })

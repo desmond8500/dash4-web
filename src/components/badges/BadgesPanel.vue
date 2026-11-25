@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -105,9 +106,7 @@ async function onPhoto(b: Badge, event: Event): Promise<void> {
 async function print(layout: 'cards' | 'sheet'): Promise<void> {
   printing.value = true
   try {
-    const url = URL.createObjectURL(await api.badges.pdf(props.projectId, layout, selected.value))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.badges.pdf(props.projectId, layout, selected.value))
     void load()
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Impression impossible', detail: errorDetail(e), life: 5000 })

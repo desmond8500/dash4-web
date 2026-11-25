@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { reactive, ref } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
@@ -44,9 +45,7 @@ function onFile(event: Event): void {
 async function openReceipt(expense: QuoteExpense): Promise<void> {
   if (!expense.document) return
   try {
-    const url = URL.createObjectURL(await api.documents.download(expense.document))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.documents.download(expense.document))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Justificatif introuvable', detail: (e as Error).message, life: 4000 })
   }

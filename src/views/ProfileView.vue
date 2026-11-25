@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -108,9 +109,7 @@ async function duplicate(cv: Cv): Promise<void> {
   cvs.value = [await api.cvs.duplicate(cv.id), ...cvs.value]
 }
 async function pdf(cv: Cv): Promise<void> {
-  const url = URL.createObjectURL(await api.cvs.pdf(cv.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.cvs.pdf(cv.id))
 }
 function remove(cv: Cv): void {
   confirm.require({

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -117,9 +118,7 @@ async function invoice(): Promise<void> {
 }
 async function pdf(): Promise<void> {
   if (!contract.value) return
-  const url = URL.createObjectURL(await api.contracts.pdf(contract.value.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.contracts.pdf(contract.value.id))
 }
 function remove(): void {
   if (!contract.value) return

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -49,9 +50,7 @@ const router = useRouter()
 /** Résumé du projet en PDF (montants seulement pour qui voit les prix). */
 async function openSummary(): Promise<void> {
   if (!project.value) return
-  const url = URL.createObjectURL(await api.projects.summaryPdf(project.value.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.projects.summaryPdf(project.value.id))
 }
 
 const project = ref<Project | null>(null)

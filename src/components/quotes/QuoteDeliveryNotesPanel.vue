@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref } from 'vue'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
@@ -74,9 +75,7 @@ function save(): void {
 
 async function pdf(note: DeliveryNote): Promise<void> {
   try {
-    const url = URL.createObjectURL(await api.quotes.deliveryNotePdf(note.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.quotes.deliveryNotePdf(note.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: (e as Error).message, life: 4000 })
   }

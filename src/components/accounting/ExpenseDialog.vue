@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -171,9 +172,7 @@ async function remove(): Promise<void> {
 async function openReceipt(): Promise<void> {
   const doc = current.value?.document
   if (!doc) return
-  const url = URL.createObjectURL(await api.documents.download(doc))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.documents.download(doc))
 }
 </script>
 

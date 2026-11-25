@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile, saveFile } from '@/utils/files'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -222,9 +223,7 @@ async function openPdf(): Promise<void> {
   if (!quote.value) return
   busy.value = true
   try {
-    const url = URL.createObjectURL(await api.quotes.pdf(quote.value.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.quotes.pdf(quote.value.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: (e as Error).message, life: 5000 })
   } finally {
@@ -248,16 +247,9 @@ async function exportQuantities(format: 'pdf' | 'csv', section?: QuoteSection): 
   busy.value = true
   try {
     const blob = await api.quotes.quantities(quote.value.id, { format, sectionId: section?.id })
-    const url = URL.createObjectURL(blob)
-    if (format === 'pdf') {
-      window.open(url, '_blank')
-    } else {
-      const a = document.createElement('a')
-      a.href = url
-      a.download = quantitiesFilename(quote.value.number, 'csv', section?.title)
-      a.click()
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    const fallback = quantitiesFilename(quote.value, format, section?.title)
+    if (format === 'pdf') openFile(blob, fallback)
+    else saveFile(blob, fallback)
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Quantitatif impossible', detail: apiErrorMessage(e), life: 5000 })
   } finally {
@@ -359,9 +351,7 @@ async function openProposalPdf(): Promise<void> {
   if (!quote.value) return
   busy.value = true
   try {
-    const url = URL.createObjectURL(await api.quotes.proposalPdf(quote.value.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.quotes.proposalPdf(quote.value.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: (e as Error).message, life: 5000 })
   } finally {

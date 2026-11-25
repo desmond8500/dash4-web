@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { onMounted, reactive, ref, watch } from 'vue'
 import DataTable, { type DataTablePageEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -123,9 +124,7 @@ async function openCvs(user: User): Promise<void> {
   sharedCvs.value = await api.cvs.ofUser(user.id)
 }
 async function openCvPdf(cv: Cv): Promise<void> {
-  const url = URL.createObjectURL(await api.cvs.pdf(cv.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.cvs.pdf(cv.id))
 }
 
 function canEdit(user: User): boolean {

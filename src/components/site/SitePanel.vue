@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { markdownToText } from '@dash4/shared'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
@@ -48,9 +49,7 @@ const doeLoading = ref(false)
 async function openDoe(): Promise<void> {
   doeLoading.value = true
   try {
-    const url = URL.createObjectURL(await api.doe(props.projectId))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.doe(props.projectId))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'DOE impossible', detail: errorDetail(e), life: 5000 })
   } finally {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -145,9 +146,7 @@ const removeParticipant = (id: number) =>
 async function openPdf(): Promise<void> {
   busy.value = true
   try {
-    const url = URL.createObjectURL(await api.journals.pdf(journal.value!.id))
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    openFile(await api.journals.pdf(journal.value!.id))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'PDF impossible', detail: errorDetail(e), life: 5000 })
   } finally {

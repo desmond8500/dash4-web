@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openFile } from '@/utils/files'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -109,9 +110,7 @@ async function onPhoto(event: Event): Promise<void> {
 async function pdf(): Promise<void> {
   if (!cv.value) return
   await save()
-  const url = URL.createObjectURL(await api.cvs.pdf(cv.value.id))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  openFile(await api.cvs.pdf(cv.value.id))
 }
 
 function addSection(): void {
