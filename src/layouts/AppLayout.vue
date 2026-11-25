@@ -44,6 +44,14 @@ onUnmounted(() => {
 const mobileMenuOpen = ref(false)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)
 
+// Barre latérale réduite/dépliée (desktop uniquement), mémorisée pour les prochaines visites
+const SIDEBAR_KEY = 'dash4.sidebar.collapsed'
+const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_KEY) === '1')
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed.value ? '1' : '0')
+}
+
 const entries = computed(() => visibleMenu(auth.canAny))
 const initials = computed(() =>
   auth.user ? `${auth.user.firstname[0] ?? ''}${auth.user.lastname[0] ?? ''}`.toUpperCase() : '',
@@ -88,10 +96,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 <template>
   <div class="layout">
-    <aside class="sidebar">
-      <RouterLink to="/" class="brand">Dash4</RouterLink>
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <div class="brand-row">
+        <RouterLink to="/" class="brand">{{ sidebarCollapsed ? 'D4' : 'Dash4' }}</RouterLink>
+        <Button
+          class="sidebar-toggle"
+          :icon="sidebarCollapsed ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'"
+          text
+          rounded
+          size="small"
+          severity="secondary"
+          :aria-label="sidebarCollapsed ? 'Déplier le menu' : 'Réduire le menu'"
+          :aria-expanded="!sidebarCollapsed"
+          :title="sidebarCollapsed ? 'Déplier le menu' : 'Réduire le menu'"
+          @click="toggleSidebar"
+        />
+      </div>
       <nav>
-        <RouterLink v-for="entry in entries" :key="entry.to" :to="entry.to" class="nav-link">
+        <RouterLink
+          v-for="entry in entries"
+          :key="entry.to"
+          :to="entry.to"
+          class="nav-link"
+          :title="sidebarCollapsed ? entry.label : undefined"
+        >
           <i :class="entry.icon" />
           <span>{{ entry.label }}</span>
           <span v-if="badgeFor(entry)" class="nav-badge">{{ badgeFor(entry) }}</span>
@@ -170,15 +198,57 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   padding: 1.25rem 0.75rem;
   background: var(--p-content-background);
   border-right: 1px solid var(--p-content-border-color);
+  transition: width 0.15s ease;
+}
+
+.sidebar.collapsed {
+  width: 68px;
+  padding: 1.25rem 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding: 0 0.75rem 1.25rem;
+}
+
+.sidebar.collapsed .brand-row {
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0 1.25rem;
 }
 
 .brand {
   display: block;
-  padding: 0 0.75rem 1.25rem;
   font-size: 1.375rem;
   font-weight: 700;
   color: var(--p-primary-color);
   text-decoration: none;
+}
+
+.sidebar.collapsed .brand {
+  font-size: 1.125rem;
+}
+
+.sidebar-toggle {
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 0.625rem;
+}
+
+.sidebar.collapsed .nav-link span {
+  display: none;
 }
 
 .nav-link {

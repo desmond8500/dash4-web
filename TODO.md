@@ -4,14 +4,14 @@
 
 - [x] Ajouter un bouton qui redirige vers le haut de la page (web et mobile) — bouton flottant « Haut de page » sur le web (toutes les pages, apparaît après défilement) ; sur mobile, bouton au-dessus de la barre d'onglets (fait remonter l'écran affiché, non testé sur l'app elle-même)
 - [x] Réarrager les formulaires pour que les contenu des champs soient lisibles — modèles de devis : désignation/référence n'étaient plus lisibles (colonnes écrasées par les autres champs à largeur fixe) ; le tableau défile désormais horizontalement et ces deux colonnes ont une largeur minimale.
-- [ ] toggle de la sidebar
+- [x] toggle de la sidebar — bouton dans la barre latérale (icônes seules quand réduite), état gardé d'une visite à l'autre
 
 ## Modèles de devis
 
 - [x] Pouvoir ajouter un article du stock et remplir le champ — colonne « Article » dans l'édition d'un modèle : recherche un article, reprend désignation/catégorie/unité (et coût/coefficient avec costs.view)
 - [x] affichier les images des articles s'il sont liés aux articles du stock — vignette (photo ou icône) devant chaque ligne liée, cliquable vers la fiche article
-- [ ] Trier selon la catégorie
-- [ ] utiliser des modales pour modifier ou ajouter des articles à un modèle et afficher un tableau par défaut
+- [x] Trier selon la catégorie — bouton « Trier par catégorie » au-dessus du tableau des lignes (même ordre que dans un devis)
+- [x] utiliser des modales pour modifier ou ajouter des articles à un modèle et afficher un tableau par défaut — le tableau du modèle est en lecture seule ; « Ajouter une ligne » et le crayon sur une ligne ouvrent une modale pour saisir/lier l'article
 
 ## Stock
 - [x] Choix d'affichage des articles en carte ou en liste — bascule liste/carte à droite des filtres (Stock), gardée d'une visite à l'autre

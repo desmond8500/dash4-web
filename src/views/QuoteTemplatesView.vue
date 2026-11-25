@@ -19,7 +19,7 @@ import type { Article, QuoteLineArticle, QuoteLineCategory, QuoteSystem, QuoteTe
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
-import { linePrice } from '@/utils/quotes'
+import { CATEGORY_ORDER, linePrice } from '@/utils/quotes'
 import ArticlePicker from '@/components/stock/ArticlePicker.vue'
 
 /** Systèmes (vidéosurveillance, alarme…) et modèles de devis. Gestion : quotes.update + costs.view. */
@@ -138,6 +138,33 @@ function unlinkArticle(line: Line): void {
   line.article = null
 }
 
+function categoryLabel(value: QuoteLineCategory): string {
+  return categories.find((c) => c.value === value)?.label ?? value
+}
+
+// Ajout/modification d'une ligne via une modale (le tableau du modèle reste en lecture seule)
+const lineModalOpen = ref(false)
+const lineEditIndex = ref<number | null>(null)
+const lineDraft = ref<Line>(emptyLine())
+
+function openLineModal(index: number | null): void {
+  lineEditIndex.value = index
+  lineDraft.value = index === null ? emptyLine() : { ...templateForm.value.lines[index] }
+  lineModalOpen.value = true
+}
+
+function saveLine(): void {
+  if (!lineDraft.value.designation.trim()) return
+  const line: Line = { ...lineDraft.value, designation: lineDraft.value.designation.trim(), reference: lineDraft.value.reference.trim() }
+  if (lineEditIndex.value === null) templateForm.value.lines.push(line)
+  else templateForm.value.lines.splice(lineEditIndex.value, 1, line)
+  lineModalOpen.value = false
+}
+
+function removeLine(index: number): void {
+  templateForm.value.lines.splice(index, 1)
+}
+
 async function openTemplate(id: number | null, systemId: number | null = null): Promise<void> {
   templateId.value = id
   errors.value = {}
@@ -160,7 +187,7 @@ async function openTemplate(id: number | null, systemId: number | null = null): 
       })),
     }
   } else {
-    templateForm.value = { name: '', description: '', system: systemId, lines: [emptyLine()] }
+    templateForm.value = { name: '', description: '', system: systemId, lines: [] }
   }
   templateOpen.value = true
 }
@@ -199,6 +226,22 @@ function removeTemplate(t: QuoteTemplateSummary): void {
     },
   })
 }
+
+// Tri des lignes par catégorie (même ordre que dans un devis)
+const linesAlreadySorted = computed(() => {
+  const order = templateForm.value.lines.map((l) => CATEGORY_ORDER.indexOf(l.category))
+  return order.every((value, i) => i === 0 || order[i - 1]! <= value)
+})
+function sortLinesByCategory(): void {
+  templateForm.value.lines = templateForm.value.lines
+    .map((line, index) => ({ line, index }))
+    .sort((a, b) => CATEGORY_ORDER.indexOf(a.line.category) - CATEGORY_ORDER.indexOf(b.line.category) || a.index - b.index)
+    .map(({ line }) => line)
+}
+
+const lineColumnCount = computed(
+  () => 6 + (auth.can('costs.view') ? 2 : 0) + (auth.can('prices.view') ? 1 : 0) + (canManage.value ? 1 : 0),
+)
 
 const systemOptions = computed(() => [{ id: null, name: 'Sans système' }, ...systems.value])
 const total = computed(() =>
@@ -305,15 +348,27 @@ const total = computed(() =>
           <InputText id="tpl-desc" v-model="templateForm.description" :disabled="!canManage" />
         </div>
         <div class="form-field form-field--full">
+          <div v-if="canManage" class="line-actions">
+            <Button label="Ajouter une ligne" icon="pi pi-plus" size="small" text @click="openLineModal(null)" />
+            <Button
+              label="Trier par catégorie"
+              icon="pi pi-sort-alt"
+              size="small"
+              text
+              severity="secondary"
+              :disabled="templateForm.lines.length < 2 || linesAlreadySorted"
+              @click="sortLinesByCategory"
+            />
+          </div>
           <div class="table-wrap">
           <table class="list lines">
             <thead>
               <tr>
                 <th class="thumb-col" aria-label="Article" />
-                <th>Désignation</th><th>Référence</th><th style="width: 9rem">Catégorie</th><th style="width: 6rem">Qté</th><th style="width: 4.5rem">Unité</th>
-                <template v-if="auth.can('costs.view')"><th style="width: 8rem">Coût</th><th style="width: 5.5rem">Coef.</th></template>
+                <th>Désignation</th><th>Référence</th><th style="width: 9rem">Catégorie</th><th class="num" style="width: 6rem">Qté</th><th style="width: 4.5rem">Unité</th>
+                <template v-if="auth.can('costs.view')"><th class="num" style="width: 8rem">Coût</th><th class="num" style="width: 5.5rem">Coef.</th></template>
                 <th v-if="auth.can('prices.view')" class="num" style="width: 8rem">Montant</th>
-                <th v-if="canManage" />
+                <th v-if="canManage" style="width: 5rem" />
               </tr>
             </thead>
             <tbody>
@@ -331,33 +386,101 @@ const total = computed(() =>
                     <img v-if="l.article.image_url" :src="l.article.image_url" :alt="l.article.designation" loading="lazy" />
                     <i v-else class="pi pi-box" />
                   </a>
-                  <ArticlePicker v-else-if="canManage" placeholder="Article" @select="(a) => linkArticle(l, a)" />
-                  <Button v-if="l.article && canManage" icon="pi pi-times" text rounded size="small" severity="secondary" aria-label="Délier l'article" title="Délier l'article" @click="unlinkArticle(l)" />
+                  <span v-else class="thumb thumb-empty"><i class="pi pi-box" /></span>
                 </td>
-                <td><InputText v-model="l.designation" class="full" :disabled="!canManage" /></td>
-                <td><InputText v-model="l.reference" class="full" :disabled="!canManage" /></td>
-                <td><Select v-model="l.category" :options="categories" option-label="label" option-value="value" class="full" :disabled="!canManage" /></td>
-                <td><InputNumber v-model="l.quantity" :min="0" :max-fraction-digits="2" class="full" input-class="num-input" :disabled="!canManage" /></td>
-                <td><InputText v-model="l.unit" class="full" :disabled="!canManage" /></td>
+                <td>{{ l.designation }}</td>
+                <td class="muted">{{ l.reference }}</td>
+                <td>{{ categoryLabel(l.category) }}</td>
+                <td class="num">{{ l.quantity }}</td>
+                <td>{{ l.unit }}</td>
                 <template v-if="auth.can('costs.view')">
-                  <td><InputNumber v-model="l.unit_cost" :min="0" class="full" input-class="num-input" :disabled="!canManage" /></td>
-                  <td><InputNumber v-model="l.coefficient" :min="0" :max-fraction-digits="4" class="full" input-class="num-input" :disabled="!canManage" /></td>
+                  <td class="num">{{ formatMoney(l.unit_cost, settings.currency()) }}</td>
+                  <td class="num">× {{ l.coefficient }}</td>
                 </template>
                 <td v-if="auth.can('prices.view')" class="num">{{ formatMoney(linePrice(l.unit_cost, l.coefficient, l.quantity).total, settings.currency()) }}</td>
-                <td v-if="canManage"><Button icon="pi pi-times" text rounded severity="secondary" aria-label="Retirer" @click="templateForm.lines.splice(i, 1)" /></td>
+                <td v-if="canManage" class="actions">
+                  <Button icon="pi pi-pencil" text rounded size="small" aria-label="Modifier la ligne" @click="openLineModal(i)" />
+                  <Button icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Retirer la ligne" @click="removeLine(i)" />
+                </td>
+              </tr>
+              <tr v-if="!templateForm.lines.length">
+                <td :colspan="lineColumnCount" class="muted">Aucune ligne. {{ canManage ? '« Ajouter une ligne » pour commencer.' : '' }}</td>
               </tr>
             </tbody>
-            <tfoot v-if="auth.can('prices.view') && auth.can('costs.view')">
-              <tr class="strong"><td :colspan="8">Total hors taxes du modèle</td><td class="num">{{ formatMoney(total, settings.currency()) }}</td><td /></tr>
+            <tfoot v-if="templateForm.lines.length && auth.can('prices.view') && auth.can('costs.view')">
+              <tr class="strong"><td :colspan="8">Total hors taxes du modèle</td><td class="num">{{ formatMoney(total, settings.currency()) }}</td><td v-if="canManage" /></tr>
             </tfoot>
           </table>
           </div>
-          <div v-if="canManage"><Button label="Ajouter une ligne" icon="pi pi-plus" size="small" text @click="templateForm.lines.push(emptyLine())" /></div>
         </div>
       </div>
       <template #footer>
         <Button label="Fermer" severity="secondary" text @click="templateOpen = false" />
         <Button v-if="canManage" label="Enregistrer" icon="pi pi-check" :disabled="!templateForm.name.trim()" @click="saveTemplate" />
+      </template>
+    </Dialog>
+
+    <Dialog
+      v-model:visible="lineModalOpen"
+      :header="lineEditIndex === null ? 'Nouvelle ligne' : 'Modifier la ligne'"
+      modal
+      :style="{ width: '560px' }"
+      :breakpoints="{ '600px': '96vw' }"
+    >
+      <div class="form-grid">
+        <div class="form-field form-field--full">
+          <label>Article du stock</label>
+          <div class="line-article">
+            <a
+              v-if="lineDraft.article"
+              :href="articleHref(lineDraft.article.id)"
+              target="_blank"
+              rel="noopener"
+              class="thumb"
+              :class="{ deleted: lineDraft.article.deleted }"
+              :title="`${lineDraft.article.designation} · voir l'article du stock`"
+            >
+              <img v-if="lineDraft.article.image_url" :src="lineDraft.article.image_url" :alt="lineDraft.article.designation" loading="lazy" />
+              <i v-else class="pi pi-box" />
+            </a>
+            <ArticlePicker v-if="!lineDraft.article" placeholder="Lier un article du stock (optionnel)" class="full" @select="(a) => linkArticle(lineDraft, a)" />
+            <Button v-else label="Délier" icon="pi pi-times" text rounded size="small" severity="secondary" @click="unlinkArticle(lineDraft)" />
+          </div>
+        </div>
+        <div class="form-field form-field--full">
+          <label for="l-designation">Désignation</label>
+          <InputText id="l-designation" v-model="lineDraft.designation" class="full" autofocus />
+        </div>
+        <div class="form-field form-field--full">
+          <label for="l-reference">Référence</label>
+          <InputText id="l-reference" v-model="lineDraft.reference" class="full" />
+        </div>
+        <div class="form-field">
+          <label for="l-category">Catégorie</label>
+          <Select id="l-category" v-model="lineDraft.category" :options="categories" option-label="label" option-value="value" class="full" />
+        </div>
+        <div class="form-field">
+          <label for="l-unit">Unité</label>
+          <InputText id="l-unit" v-model="lineDraft.unit" class="full" />
+        </div>
+        <div class="form-field">
+          <label for="l-qty">Quantité</label>
+          <InputNumber id="l-qty" v-model="lineDraft.quantity" :min="0" :max-fraction-digits="2" class="full" input-class="num-input" />
+        </div>
+        <template v-if="auth.can('costs.view')">
+          <div class="form-field">
+            <label for="l-cost">Coût unitaire</label>
+            <InputNumber id="l-cost" v-model="lineDraft.unit_cost" :min="0" class="full" input-class="num-input" />
+          </div>
+          <div class="form-field">
+            <label for="l-coef">Coefficient</label>
+            <InputNumber id="l-coef" v-model="lineDraft.coefficient" :min="0" :max-fraction-digits="4" class="full" input-class="num-input" />
+          </div>
+        </template>
+      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="lineModalOpen = false" />
+        <Button label="Enregistrer" icon="pi pi-check" :disabled="!lineDraft.designation.trim()" @click="saveLine" />
       </template>
     </Dialog>
   </div>
@@ -389,6 +512,12 @@ const total = computed(() =>
   width: 100%;
 }
 
+.line-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
 /* Le tableau défile dans la fenêtre au lieu d'écraser désignation/référence */
 .table-wrap {
   overflow-x: auto;
@@ -412,11 +541,7 @@ const total = computed(() =>
 }
 
 .thumb-col {
-  width: 8rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
+  width: 3.5rem;
 }
 
 .thumb {
@@ -442,6 +567,20 @@ const total = computed(() =>
 
 .thumb.deleted {
   opacity: 0.5;
+}
+
+.thumb-empty {
+  border-style: dashed;
+}
+
+.line-article {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.line-article .full {
+  flex: 1;
 }
 
 :deep(.num-input) {
