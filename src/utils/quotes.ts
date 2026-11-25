@@ -77,6 +77,17 @@ export function sortedByCategory(lines: Array<Pick<QuoteLine, 'id' | 'category'>
     .map(({ line }) => line.id)
 }
 
+/** Le quantitatif laisse de côté les forfaits et la main-d'œuvre : y a-t-il au moins une autre ligne ? */
+export function hasQuantities(lines: Array<Pick<QuoteLine, 'category'>>): boolean {
+  return lines.some((line) => line.category.value !== 'service')
+}
+
+/** Nom du fichier du quantitatif, comme celui que donne l'API (« Quantitatif DEV-2026-0001 - Bâtiment A.csv »). */
+export function quantitiesFilename(number: string, extension: 'pdf' | 'csv', sectionTitle?: string): string {
+  const section = sectionTitle?.replace(/[\\/:*?"<>|]+/g, ' ').trim()
+  return `${`Quantitatif ${number}${section ? ` - ${section}` : ''}`.replace(/\s+/g, ' ').trim()}.${extension}`
+}
+
 /** Adresses e-mail saisies (séparées par des virgules, points-virgules ou espaces). */
 export function parseEmails(input: string): { valid: string[]; invalid: string[] } {
   const parts = input

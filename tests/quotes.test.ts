@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Quote } from '@dash4/shared'
 import { visibleMenu } from '../src/menu'
-import { coefficientLabel, linePrice, parseEmails, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
+import { coefficientLabel, hasQuantities, linePrice, parseEmails, quantitiesFilename, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
 
 const quote = (status: Quote['status']['value'], can: Partial<Quote['can']> = {}) =>
   ({
@@ -63,5 +63,19 @@ describe('destinataires de l\'envoi par e-mail', () => {
       invalid: ['pas-une-adresse'],
     })
     expect(parseEmails('')).toEqual({ valid: [], invalid: [] })
+  })
+})
+
+describe('quantitatif du devis', () => {
+  it('ne compte pas les forfaits et la main-d\'œuvre', () => {
+    const line = (value: string) => ({ category: { value, label: value } }) as never
+    expect(hasQuantities([line('service'), line('device')])).toBe(true)
+    expect(hasQuantities([line('service')])).toBe(false)
+    expect(hasQuantities([])).toBe(false)
+  })
+
+  it('nomme le fichier comme l\'API, pour tout le devis ou une section', () => {
+    expect(quantitiesFilename('DEV-2026-0001', 'csv')).toBe('Quantitatif DEV-2026-0001.csv')
+    expect(quantitiesFilename('DEV-2026-0001', 'pdf', 'Bâtiment A / RDC')).toBe('Quantitatif DEV-2026-0001 - Bâtiment A RDC.pdf')
   })
 })

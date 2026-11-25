@@ -38,9 +38,11 @@ import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
 import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
 import { invoiceStatusSeverity } from '@/utils/invoices'
 import Dialog from 'primevue/dialog'
+import Menu from 'primevue/menu'
 import { formatDate, fromApiDate, toApiDate } from '@/utils/projects'
 import { formatDateTime } from '@/utils/clientRequests'
-import { quoteStatusSeverity, statusActions, type StatusAction } from '@/utils/quotes'
+import { hasQuantities, quantitiesFilename, quoteStatusSeverity, statusActions, type StatusAction } from '@/utils/quotes'
+import { apiErrorMessage } from '@/utils/errors'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -227,6 +229,36 @@ async function openPdf(): Promise<void> {
   }
 }
 
+// Quantitatif sans prix ni forfaits (main-d'œuvre) : tout le devis (sections imprimées, avec récapitulatif) ou une section
+const quantitiesMenu = ref<InstanceType<typeof Menu> | null>(null)
+const quantitiesItems = [
+  { label: 'PDF — toutes les sections', icon: 'pi pi-file-pdf', command: () => void exportQuantities('pdf') },
+  { label: 'Tableur (CSV) — toutes les sections', icon: 'pi pi-file-excel', command: () => void exportQuantities('csv') },
+]
+const canExportQuantities = computed(() => (quote.value?.sections ?? []).some((s) => s.is_visible && hasQuantities(s.lines)))
+
+async function exportQuantities(format: 'pdf' | 'csv', section?: QuoteSection): Promise<void> {
+  if (!quote.value) return
+  busy.value = true
+  try {
+    const blob = await api.quotes.quantities(quote.value.id, { format, sectionId: section?.id })
+    const url = URL.createObjectURL(blob)
+    if (format === 'pdf') {
+      window.open(url, '_blank')
+    } else {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = quantitiesFilename(quote.value.number, 'csv', section?.title)
+      a.click()
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Quantitatif impossible', detail: apiErrorMessage(e), life: 5000 })
+  } finally {
+    busy.value = false
+  }
+}
+
 async function duplicate(): Promise<void> {
   if (!quote.value) return
   try {
@@ -384,6 +416,17 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           <Button v-if="canInvoice" label="Facturer" icon="pi pi-receipt" severity="success" @click="invoiceOpen = true" />
           <Button v-if="quote.can.export && quote.can.update" label="Envoyer" icon="pi pi-send" @click="emailOpen = true" />
           <Button v-if="quote.can.export" label="PDF" icon="pi pi-file-pdf" severity="secondary" :loading="busy" @click="openPdf" />
+          <Button
+            label="Quantitatif"
+            icon="pi pi-list"
+            severity="secondary"
+            outlined
+            aria-haspopup="true"
+            :disabled="busy || !canExportQuantities"
+            title="Matériel et quantités, sans prix ni forfaits"
+            @click="quantitiesMenu?.toggle($event)"
+          />
+          <Menu ref="quantitiesMenu" :model="quantitiesItems" popup />
           <Button v-if="canToSite" label="Vers le chantier" icon="pi pi-sitemap" severity="secondary" outlined title="Créer les appareils du chantier depuis le devis" @click="siteOpen = true" />
           <Button v-if="auth.can('quotes.create')" label="Dupliquer" icon="pi pi-copy" severity="secondary" outlined @click="duplicate" />
           <Button v-if="quote.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
@@ -480,6 +523,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             @update-line="updateLine"
             @remove-line="removeLine"
             @order-lines="(ids) => orderLines(section.id, ids)"
+            @export-quantities="(format) => exportQuantities(format, section)"
           />
 
           <form v-if="editable" class="new-section" @submit.prevent="addSection">

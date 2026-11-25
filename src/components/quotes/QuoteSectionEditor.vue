@@ -12,7 +12,7 @@ import Dialog from 'primevue/dialog'
 import { useRouter } from 'vue-router'
 import { formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
 import type { Currency, QuoteLine, QuoteLineCategory, QuoteLinePayload, QuoteSection } from '@dash4/shared'
-import { linePrice, sortedByCategory } from '@/utils/quotes'
+import { hasQuantities, linePrice, sortedByCategory } from '@/utils/quotes'
 import { useAuthStore } from '@/stores/auth'
 import ArticlePicker from '@/components/stock/ArticlePicker.vue'
 import type { Article } from '@dash4/shared'
@@ -49,6 +49,8 @@ const emit = defineEmits<{
   saveProposal: [text: string | null]
   saveAsTemplate: []
   linkArticle: [lineId: number, articleId: number | null]
+  /** Quantitatif de la section, sans prix ni forfaits. */
+  exportQuantities: [format: 'pdf' | 'csv']
 }>()
 
 const router = useRouter()
@@ -189,6 +191,14 @@ function move(index: number, direction: -1 | 1): void {
   emit('orderLines', ids)
 }
 
+// Quantitatif de la section (sans forfaits ni main-d'œuvre) : PDF ou tableur
+const quantitiesMenu = ref<InstanceType<typeof Menu> | null>(null)
+const quantitiesItems = [
+  { label: 'PDF', icon: 'pi pi-file-pdf', command: () => emit('exportQuantities', 'pdf') },
+  { label: 'Tableur (CSV)', icon: 'pi pi-file-excel', command: () => emit('exportQuantities', 'csv') },
+]
+const canExportQuantities = computed(() => hasQuantities(props.section.lines))
+
 // Menu d'une ligne : déplacer vers une autre section, supprimer
 const menu = ref<InstanceType<typeof Menu> | null>(null)
 const menuItems = ref<Array<Record<string, unknown>>>([])
@@ -263,6 +273,19 @@ const money = (v: number) => formatMoney(v, props.currency)
         :title="fullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran'"
         @click="fullscreen = !fullscreen"
       />
+      <Button
+        icon="pi pi-list"
+        text
+        rounded
+        size="small"
+        severity="secondary"
+        aria-label="Quantitatif de la section"
+        aria-haspopup="true"
+        :disabled="!canExportQuantities"
+        :title="canExportQuantities ? 'Quantitatif de la section (sans forfaits ni main-d\'œuvre)' : 'Aucune ligne de matériel dans cette section'"
+        @click="quantitiesMenu?.toggle($event)"
+      />
+      <Menu ref="quantitiesMenu" :model="quantitiesItems" popup />
       <template v-if="props.editable && showForms">
         <Button
           icon="pi pi-sort-amount-down"
