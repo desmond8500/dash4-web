@@ -3,19 +3,55 @@ import { useRouter } from 'vue-router'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import CardGrid from '@/components/CardGrid.vue'
 import type { Task } from '@dash4/shared'
 import { formatDate } from '@/utils/projects'
 import { taskStatusSeverity } from '@/utils/tasks'
 
-const props = defineProps<{ tasks: Task[]; loading?: boolean; lazy?: boolean; total?: number; rows?: number; hideProject?: boolean }>()
+const props = defineProps<{ tasks: Task[]; loading?: boolean; lazy?: boolean; total?: number; rows?: number; hideProject?: boolean; cards?: boolean }>()
 const emit = defineEmits<{ page: [event: DataTablePageEvent] }>()
 const router = useRouter()
-const open = (e: DataTableRowClickEvent) => router.push({ name: 'task', params: { id: (e.data as Task).id } })
+const openTask = (t: Task) => router.push({ name: 'task', params: { id: t.id } })
+const open = (e: DataTableRowClickEvent) => openTask(e.data as Task)
 const slot = (t: Task) => (t.starts_at ? `${formatDate(t.starts_at.slice(0, 10))} ${t.starts_at.slice(11, 16)}` : '')
 </script>
 
 <template>
+  <CardGrid
+    v-if="props.cards"
+    :items="props.tasks"
+    :loading="props.loading"
+    :lazy="props.lazy"
+    :total="props.total"
+    :rows="props.rows ?? 50"
+    :rows-per-page-options="[50, 100]"
+    empty-text="Aucune tâche."
+    @open="openTask"
+    @page="emit('page', $event)"
+  >
+    <template #card="{ item }">
+      <div class="card-head">
+        <div>
+          <span class="card-title" :class="{ done: item.status.value === 'done' }">
+            <i v-if="item.priority.value === 'high'" class="pi pi-exclamation-circle urgent" title="Urgente" />
+            {{ item.title }}
+          </span>
+          <span class="card-sub">{{ [props.hideProject ? null : item.project?.name, item.client?.name].filter(Boolean).join(' · ') }}</span>
+        </div>
+      </div>
+      <div class="card-meta">
+        <span><i class="pi pi-users" /> {{ item.assignees?.length ? item.assignees.map((a) => a.full_name).join(', ') : 'Non affectée' }}</span>
+        <span v-if="item.starts_at"><i class="pi pi-calendar" /> {{ slot(item) }}</span>
+        <span v-if="item.due_date" :class="{ late: item.is_overdue }"><i class="pi pi-flag" /> Échéance {{ formatDate(item.due_date) }}</span>
+        <span v-if="item.subtasks_count"><i class="pi pi-list-check" /> {{ item.subtasks_done }}/{{ item.subtasks_count }} sous-tâches</span>
+      </div>
+      <div class="card-foot">
+        <Tag :value="item.is_overdue ? 'En retard' : item.status.label" :severity="item.is_overdue ? 'danger' : taskStatusSeverity(item.status.value)" />
+      </div>
+    </template>
+  </CardGrid>
   <DataTable
+    v-else
     :value="props.tasks"
     :loading="props.loading"
     :lazy="props.lazy"

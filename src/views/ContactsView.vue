@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import CardGrid from '@/components/CardGrid.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import DataTable, { type DataTablePageEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -14,6 +17,8 @@ import { useAuthStore } from '@/stores/auth'
 import ContactFormDialog from '@/components/ContactFormDialog.vue'
 import { telHref } from '@/utils/contactLists'
 
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('')
+const viewMode = useViewMode('contacts')
 const auth = useAuthStore()
 const toast = useToast()
 
@@ -81,6 +86,7 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h1>Contacts</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('clients.create')" label="Nouveau contact" icon="pi pi-plus" @click="openForm(null)" />
     </div>
 
@@ -91,7 +97,40 @@ onMounted(load)
       </IconField>
     </div>
 
+    <CardGrid
+      v-if="viewMode === 'cards'"
+      :items="contacts"
+      :loading="loading"
+      lazy
+      :total="total"
+      :rows="filters.per_page"
+      :clickable="false"
+      card-class="contact-badge"
+      min-width="15rem"
+      empty-text="Aucun contact."
+      @page="onPage"
+    >
+      <template #card="{ item }">
+        <div class="badge-band">
+          <div v-if="auth.can('clients.update')" class="badge-actions">
+            <Button icon="pi pi-pencil" text rounded size="small" aria-label="Modifier" @click="openForm(item)" />
+          </div>
+        </div>
+        <div class="badge-avatar" aria-hidden="true">{{ initials(item.full_name) }}</div>
+        <div class="badge-body">
+          <span class="badge-name">{{ item.civility ? `${item.civility.label} ` : '' }}{{ item.full_name }}</span>
+          <span v-if="item.job_title" class="badge-job">{{ item.job_title }}</span>
+          <RouterLink v-if="item.client" class="badge-company" :to="{ name: 'client', params: { id: item.client.id } }">{{ item.client.name }}</RouterLink>
+          <span v-else-if="item.company" class="badge-company">{{ item.company }}</span>
+        </div>
+        <div v-if="item.phone || item.email" class="badge-channels">
+          <a v-if="item.phone" :href="telHref(item.phone)"><i class="pi pi-phone" /> {{ item.phone }}</a>
+          <a v-if="item.email" :href="`mailto:${item.email}`"><i class="pi pi-envelope" /> {{ item.email }}</a>
+        </div>
+      </template>
+    </CardGrid>
     <DataTable
+      v-else
       :value="contacts"
       :loading="loading"
       lazy

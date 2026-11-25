@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import CardGrid from '@/components/CardGrid.vue'
 import { formatMoney } from '@dash4/shared'
 import type { Currency, Quote } from '@dash4/shared'
 import { formatDate } from '@/utils/projects'
@@ -18,17 +19,50 @@ const props = defineProps<{
   total?: number
   rows?: number
   hideClient?: boolean
+  /** Affichage en cartes. */
+  cards?: boolean
 }>()
 const emit = defineEmits<{ page: [event: DataTablePageEvent] }>()
 const router = useRouter()
 
 function open(event: DataTableRowClickEvent): void {
-  void router.push({ name: 'quote', params: { id: (event.data as Quote).id } })
+  openQuote(event.data as Quote)
+}
+function openQuote(quote: Quote): void {
+  void router.push({ name: 'quote', params: { id: quote.id } })
 }
 </script>
 
 <template>
+  <CardGrid
+    v-if="props.cards"
+    :items="props.quotes"
+    :loading="props.loading"
+    :lazy="props.lazy"
+    :total="props.total"
+    :rows="props.rows ?? 25"
+    empty-text="Aucun devis."
+    @open="openQuote"
+    @page="emit('page', $event)"
+  >
+    <template #card="{ item }">
+      <div class="card-head">
+        <div>
+          <span class="card-title">{{ item.number }} <i v-if="item.is_favorite" class="pi pi-star-fill favorite" aria-label="Favori" /></span>
+          <span class="card-sub">{{ [props.hideClient ? null : item.client?.name, item.project?.name].filter(Boolean).join(' · ') }}</span>
+        </div>
+      </div>
+      <div class="card-text">{{ item.title }}</div>
+      <div class="card-foot">
+        <Tag :value="item.status.label" :severity="quoteStatusSeverity(item.status.value)" />
+        <i v-if="item.signed_at" class="pi pi-verified signed" title="Copie signée reçue" />
+        <span class="muted">{{ formatDate(item.issued_at) }}</span>
+        <span v-if="props.showPrices && item.total !== undefined" class="card-amount">{{ formatMoney(item.total, props.currency) }}</span>
+      </div>
+    </template>
+  </CardGrid>
   <DataTable
+    v-else
     :value="props.quotes"
     :loading="props.loading"
     :lazy="props.lazy"

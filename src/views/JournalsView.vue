@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DataTablePageEvent } from 'primevue/datatable'
@@ -17,6 +19,7 @@ import JournalCreateDialog from '@/components/journals/JournalCreateDialog.vue'
 import JournalTable from '@/components/journals/JournalTable.vue'
 import { apiErrorMessage } from '@/utils/errors'
 
+const viewMode = useViewMode('journals')
 const auth = useAuthStore()
 const router = useRouter()
 const toast = useToast()
@@ -67,6 +70,7 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h1>Journaux d'intervention</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('journals.create')" label="Nouveau journal" icon="pi pi-plus" @click="createOpen = true" />
     </div>
     <div class="filters">
@@ -77,7 +81,7 @@ onMounted(load)
       <Select v-model="filters.type" :options="[{ value: null, label: 'Tous les types' }, ...JOURNAL_TYPES]" option-label="label" option-value="value" />
       <label class="switch"><ToggleSwitch v-model="filters.mine" /> Les miens</label>
     </div>
-    <JournalTable :journals="journals" :loading="loading" lazy :total="total" @page="onPage" />
+    <JournalTable :cards="viewMode === 'cards'" :journals="journals" :loading="loading" lazy :total="total" @page="onPage" />
     <JournalCreateDialog v-model:visible="createOpen" @created="(j) => router.push({ name: 'journal', params: { id: j.id } })" />
   </div>
 </template>

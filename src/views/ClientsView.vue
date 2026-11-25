@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import CardGrid from '@/components/CardGrid.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
@@ -19,6 +22,7 @@ import ClientFormDialog from '@/components/ClientFormDialog.vue'
 import ClientLogo from '@/components/ClientLogo.vue'
 import { statusSeverity } from '@/utils/clients'
 
+const viewMode = useViewMode('clients')
 const auth = useAuthStore()
 const toast = useToast()
 const router = useRouter()
@@ -115,6 +119,7 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h1>Clients</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('clients.create')" label="Nouveau client" icon="pi pi-plus" @click="dialogOpen = true" />
     </div>
 
@@ -128,7 +133,38 @@ onMounted(load)
       <ToggleButton v-model="filters.favorite" on-label="Favoris" off-label="Favoris" on-icon="pi pi-star-fill" off-icon="pi pi-star" />
     </div>
 
+    <CardGrid
+      v-if="viewMode === 'cards'"
+      :items="clients"
+      :loading="loading"
+      lazy
+      :total="total"
+      :rows="filters.per_page"
+      empty-text="Aucun client."
+      @open="(c) => router.push({ name: 'client', params: { id: c.id } })"
+      @page="onPage"
+    >
+      <template #card="{ item }">
+        <div class="card-head">
+          <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+          <div>
+            <span class="card-title"><i v-if="item.is_favorite" class="pi pi-star-fill favorite" aria-label="Favori" /> {{ item.name }}</span>
+            <span class="card-sub">{{ item.type.label }}</span>
+          </div>
+        </div>
+        <div class="card-meta">
+          <span v-if="item.address"><i class="pi pi-map-marker" /> {{ item.address }}</span>
+          <span v-if="item.phones?.[0]"><i class="pi pi-phone" /> {{ item.phones[0].number }}</span>
+          <span v-if="item.emails?.[0]"><i class="pi pi-envelope" /> {{ item.emails[0].address }}</span>
+        </div>
+        <div class="card-foot">
+          <Tag :value="item.status.label" :severity="statusSeverity(item.status.value)" />
+          <span class="muted"><i class="pi pi-users" /> {{ item.contacts_count ?? 0 }}</span>
+        </div>
+      </template>
+    </CardGrid>
     <DataTable
+      v-else
       :value="clients"
       :loading="loading"
       lazy

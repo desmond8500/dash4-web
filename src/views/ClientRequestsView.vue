@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { DataTablePageEvent } from 'primevue/datatable'
@@ -18,6 +20,7 @@ import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
 import ClientRequestTable from '@/components/ClientRequestTable.vue'
 import { INBOX_TABS, inboxFilters, type InboxTab, type QuickAction } from '@/utils/clientRequests'
 
+const viewMode = useViewMode('client_requests')
 const auth = useAuthStore()
 const store = useClientRequestsStore()
 const toast = useToast()
@@ -147,6 +150,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Demandes clients</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('client_requests.update')" label="Boîte mail" icon="pi pi-envelope" severity="secondary" @click="router.push({ name: 'inbox' })" />
       <Button
         v-if="auth.can('client_requests.create')"
@@ -177,6 +181,7 @@ onMounted(() => {
     </div>
 
     <ClientRequestTable
+      :cards="viewMode === 'cards'"
       :requests="requests"
       :loading="loading"
       :total="total"

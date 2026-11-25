@@ -252,3 +252,204 @@ button.link:hover {
 body.no-scroll {
   overflow: hidden;
 }
+
+/* ---- Affichage en cartes (CardGrid) ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.entity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 12px;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+}
+.entity-card.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.entity-card.clickable:hover {
+  border-color: var(--p-primary-color);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.08);
+  transform: translateY(-1px);
+}
+.entity-card:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 2px;
+}
+.entity-card .card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.entity-card .card-head > div {
+  min-width: 0;
+  flex: 1;
+}
+.entity-card .card-title {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entity-card .card-sub {
+  display: block;
+  color: var(--p-text-muted-color);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entity-card .card-text {
+  font-size: 0.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.entity-card .card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+}
+.entity-card .card-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entity-card .card-meta i {
+  font-size: 0.8rem;
+  width: 1rem;
+  flex-shrink: 0;
+}
+.entity-card .card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+.entity-card .card-amount {
+  margin-left: auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.entity-card .late {
+  color: var(--p-red-500);
+  font-weight: 600;
+}
+.entity-card .favorite {
+  color: var(--p-yellow-500);
+}
+
+/* Contacts en badge : bandeau, fente, initiales, nom, fonction, coordonnées */
+.entity-card.contact-badge {
+  padding: 0;
+  overflow: hidden;
+  text-align: center;
+  gap: 0;
+}
+.contact-badge .badge-band {
+  height: 3.25rem;
+  background: linear-gradient(135deg, var(--p-primary-color), var(--p-primary-700, var(--p-primary-color)));
+  position: relative;
+}
+.contact-badge .badge-band::before {
+  content: '';
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  width: 2.6rem;
+  height: 0.45rem;
+  margin-left: -1.3rem;
+  border-radius: 999px;
+  background: var(--p-content-background);
+  opacity: 0.85;
+}
+.contact-badge .badge-avatar {
+  width: 4.25rem;
+  height: 4.25rem;
+  margin: -2.1rem auto 0.4rem;
+  border-radius: 50%;
+  border: 3px solid var(--p-content-background);
+  background: var(--p-highlight-background);
+  color: var(--p-highlight-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  position: relative;
+}
+.contact-badge .badge-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 1rem 0.6rem;
+  min-width: 0;
+}
+.contact-badge .badge-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.contact-badge .badge-job {
+  color: var(--p-primary-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.contact-badge .badge-company {
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+.contact-badge .badge-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 1rem 0.8rem;
+  border-top: 1px dashed var(--p-content-border-color);
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.contact-badge .badge-channels a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contact-badge .badge-actions {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+}
+.contact-badge .badge-actions .p-button {
+  color: #fff;
+}
+
+/* Bascule tableau / cartes, à droite de l'en-tête de page, avant les boutons */
+.page-header .view-toggle {
+  margin-left: auto;
+}

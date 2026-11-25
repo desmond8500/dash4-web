@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import CardGrid from '@/components/CardGrid.vue'
+import { useViewMode } from '@/composables/useViewMode'
+import Checkbox from 'primevue/checkbox'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -44,6 +48,11 @@ const returnOpen = computed({ get: () => !!returnFor.value, set: (v) => !v && (r
 const canLend = computed(() => auth.can('tools.lend'))
 const canLabels = computed(() => auth.can('tools.view'))
 const selected = ref<Tool[]>([])
+const viewMode = useViewMode('tools')
+const isSelected = (tool: Tool) => selected.value.some((t) => t.id === tool.id)
+function toggleSelected(tool: Tool, on: boolean): void {
+  selected.value = on ? [...selected.value.filter((t) => t.id !== tool.id), tool] : selected.value.filter((t) => t.id !== tool.id)
+}
 const labelsOpen = ref(false)
 /** Étiquettes : les outils cochés, sinon ceux de la liste affichée. */
 const labelTools = computed(() => (selected.value.length ? selected.value : shownTools.value))
@@ -112,6 +121,7 @@ function openReturn(loan: ToolLoan): void {
     <div class="page-header">
       <Button icon="pi pi-arrow-left" text rounded aria-label="Retour au stock" @click="router.push({ name: 'stock' })" />
       <h1 class="grow">Outillage</h1>
+      <ViewModeToggle v-if="view === 'tools'" v-model="viewMode" />
       <Button
         v-if="canLabels && view === 'tools'"
         :label="selected.length ? `Étiquettes QR (${selected.length})` : 'Étiquettes QR'"
@@ -139,8 +149,52 @@ function openReturn(loan: ToolLoan): void {
       </IconField>
     </div>
 
+    <CardGrid
+      v-if="view === 'tools' && viewMode === 'cards'"
+      :items="shownTools"
+      :loading="loading"
+      min-width="16rem"
+      :empty-text="search || filter !== 'all' ? 'Aucun outil ne correspond.' : 'Aucun outil enregistré : créez-les à partir des articles du stock.'"
+      @open="(t) => router.push({ name: 'tool', params: { id: t.id } })"
+    >
+      <template #card="{ item }">
+        <div class="card-head">
+          <span class="thumb">
+            <img v-if="item.image_url" :src="item.image_url" alt="" loading="lazy" />
+            <i v-else class="pi pi-wrench" aria-hidden="true" />
+          </span>
+          <div>
+            <span class="card-title">{{ item.name }}</span>
+            <span class="card-sub">{{ [item.code, item.serial_number ? `S/N ${item.serial_number}` : null].filter(Boolean).join(' · ') }}</span>
+          </div>
+          <Checkbox
+            v-if="canLabels"
+            :model-value="isSelected(item)"
+            binary
+            :aria-label="`Étiquette de ${item.name}`"
+            @click.stop
+            @update:model-value="(v: boolean) => toggleSelected(item, v)"
+          />
+        </div>
+        <div class="card-meta">
+          <span><i class="pi pi-map-marker" /> {{ item.storage_location?.name ?? 'Emplacement non indiqué' }}</span>
+          <span><i class="pi pi-cog" /> {{ item.condition.label }}</span>
+          <span v-if="item.current_loan" :class="{ late: item.current_loan.state === 'late' }">
+            <i class="pi pi-user" /> {{ item.current_loan.borrower_label }} — {{ loanDueText(item.current_loan) }}
+          </span>
+        </div>
+        <div class="card-foot">
+          <Tag :value="item.status.label" :severity="toolSeverity(item.status.value)" />
+          <span class="spacer" />
+          <template v-if="canLend">
+            <Button v-if="item.current_loan" label="Retour" icon="pi pi-sign-in" size="small" text @click.stop="returnFor = { tool: item, loan: item.current_loan }" />
+            <Button v-else-if="item.status.value === 'available'" label="Prêter" icon="pi pi-sign-out" size="small" text @click.stop="lendFor = item" />
+          </template>
+        </div>
+      </template>
+    </CardGrid>
     <DataTable
-      v-if="view === 'tools'"
+      v-else-if="view === 'tools'"
       :value="shownTools"
       :loading="loading"
       v-model:selection="selected"
@@ -217,6 +271,9 @@ function openReturn(loan: ToolLoan): void {
 </template>
 
 <style scoped>
+.spacer {
+  flex: 1;
+}
 .grow {
   flex: 1;
 }

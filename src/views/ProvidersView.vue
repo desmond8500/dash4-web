@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import CardGrid from '@/components/CardGrid.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DataTable, { type DataTableRowClickEvent } from 'primevue/datatable'
@@ -53,6 +56,7 @@ watch(search, () => {
 watch(tab, (t) => void router.replace({ query: { tab: t } }))
 onMounted(() => void Promise.all([loadProviders(), loadBrands()]))
 
+const viewMode = useViewMode('providers')
 const openProvider = (e: DataTableRowClickEvent) => router.push({ name: 'provider', params: { id: (e.data as Provider).id } })
 const openBrand = (e: DataTableRowClickEvent) => router.push({ name: 'brand', params: { id: (e.data as Brand).id } })
 
@@ -74,6 +78,7 @@ async function addBrand(): Promise<void> {
     <RouterLink :to="{ name: 'stock' }" class="back"><i class="pi pi-arrow-left" /> Stock</RouterLink>
     <div class="page-header">
       <h1>Fournisseurs et marques</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="canCreate && tab === 'providers'" label="Nouveau fournisseur" icon="pi pi-plus" @click="createOpen = true" />
       <form v-if="canCreate && tab === 'brands'" class="add-brand" @submit.prevent="addBrand">
         <InputText v-model="newBrand" placeholder="Nouvelle marque" />
@@ -93,7 +98,29 @@ async function addBrand(): Promise<void> {
       </TabList>
       <TabPanels>
         <TabPanel value="providers">
-          <DataTable :value="providers" data-key="id" row-hover class="clickable" @row-click="openProvider">
+          <CardGrid
+            v-if="viewMode === 'cards'"
+            :items="providers"
+            empty-text="Aucun fournisseur."
+            @open="(p) => router.push({ name: 'provider', params: { id: p.id } })"
+          >
+            <template #card="{ item }">
+              <div class="card-head">
+                <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+                <div>
+                  <span class="card-title">{{ item.name }}</span>
+                  <span class="card-sub">{{ item.contact_name ?? 'Fournisseur' }}</span>
+                </div>
+              </div>
+              <div class="card-meta">
+                <span v-if="item.phone"><i class="pi pi-phone" /> {{ item.phone }}</span>
+                <span v-if="item.email"><i class="pi pi-envelope" /> {{ item.email }}</span>
+                <span v-if="item.latitude !== null"><i class="pi pi-map-marker" /> Position enregistrée</span>
+              </div>
+              <div class="card-foot"><span class="muted"><i class="pi pi-box" /> {{ item.articles_count ?? 0 }} article(s)</span></div>
+            </template>
+          </CardGrid>
+          <DataTable v-else :value="providers" data-key="id" row-hover class="clickable" @row-click="openProvider">
             <template #empty>Aucun fournisseur.</template>
             <Column style="width: 3.5rem"><template #body="{ data }"><ClientLogo :name="data.name" :url="data.logo_url" :size="36" /></template></Column>
             <Column header="Nom">
@@ -112,7 +139,25 @@ async function addBrand(): Promise<void> {
           </DataTable>
         </TabPanel>
         <TabPanel value="brands">
-          <DataTable :value="brands" data-key="id" row-hover class="clickable" @row-click="openBrand">
+          <CardGrid
+            v-if="viewMode === 'cards'"
+            :items="brands"
+            min-width="14rem"
+            empty-text="Aucune marque."
+            @open="(b) => router.push({ name: 'brand', params: { id: b.id } })"
+          >
+            <template #card="{ item }">
+              <div class="card-head">
+                <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+                <div>
+                  <span class="card-title">{{ item.name }}</span>
+                  <span v-if="item.website" class="card-sub">{{ item.website }}</span>
+                </div>
+              </div>
+              <div class="card-foot"><span class="muted"><i class="pi pi-box" /> {{ item.articles_count ?? 0 }} article(s)</span></div>
+            </template>
+          </CardGrid>
+          <DataTable v-else :value="brands" data-key="id" row-hover class="clickable" @row-click="openBrand">
             <template #empty>Aucune marque.</template>
             <Column style="width: 3.5rem"><template #body="{ data }"><ClientLogo :name="data.name" :url="data.logo_url" :size="36" /></template></Column>
             <Column header="Marque">

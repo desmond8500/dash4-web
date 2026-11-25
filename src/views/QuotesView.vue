@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DataTablePageEvent } from 'primevue/datatable'
@@ -16,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings'
 import QuoteTable from '@/components/quotes/QuoteTable.vue'
 import QuoteCreateDialog from '@/components/quotes/QuoteCreateDialog.vue'
 
+const viewMode = useViewMode('quotes')
 const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
@@ -94,6 +97,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Devis</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <div class="header-actions">
         <Button
           v-if="auth.canAny(['quotes.create', 'quotes.update', 'quotes.update.own'])"
@@ -115,6 +119,7 @@ onMounted(() => {
     </div>
 
     <QuoteTable
+      :cards="viewMode === 'cards'"
       :quotes="quotes"
       :currency="settings.currency()"
       :show-prices="auth.can('prices.view')"

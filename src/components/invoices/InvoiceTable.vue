@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import CardGrid from '@/components/CardGrid.vue'
 import { formatMoney } from '@dash4/shared'
 import type { Currency, Invoice } from '@dash4/shared'
 import { formatDate } from '@/utils/projects'
@@ -17,17 +18,53 @@ const props = defineProps<{
   total?: number
   rows?: number
   hideClient?: boolean
+  /** Affichage en cartes. */
+  cards?: boolean
 }>()
 const emit = defineEmits<{ page: [event: DataTablePageEvent] }>()
 const router = useRouter()
 
 function open(event: DataTableRowClickEvent): void {
-  void router.push({ name: 'invoice', params: { id: (event.data as Invoice).id } })
+  openInvoice(event.data as Invoice)
+}
+function openInvoice(invoice: Invoice): void {
+  void router.push({ name: 'invoice', params: { id: invoice.id } })
 }
 </script>
 
 <template>
+  <CardGrid
+    v-if="props.cards"
+    :items="props.invoices"
+    :loading="props.loading"
+    :lazy="props.lazy"
+    :total="props.total"
+    :rows="props.rows ?? 25"
+    empty-text="Aucune facture."
+    @open="openInvoice"
+    @page="emit('page', $event)"
+  >
+    <template #card="{ item }">
+      <div class="card-head">
+        <div>
+          <span class="card-title">{{ item.number ?? 'Brouillon' }}</span>
+          <span class="card-sub">{{ [props.hideClient ? null : item.client?.name, item.quote?.number].filter(Boolean).join(' · ') }}</span>
+        </div>
+      </div>
+      <div class="card-text">{{ item.title }}</div>
+      <div class="card-meta">
+        <span><i class="pi pi-calendar" /> {{ formatDate(item.issued_at) || '—' }}</span>
+        <span v-if="item.due_at" :class="{ late: item.is_overdue }"><i class="pi pi-clock" /> Échéance {{ formatDate(item.due_at) }}</span>
+        <span v-if="item.status.value !== 'draft' && item.status.value !== 'cancelled'"><i class="pi pi-wallet" /> Reste {{ formatMoney(item.remaining_amount, props.currency) }}</span>
+      </div>
+      <div class="card-foot">
+        <Tag :value="item.is_overdue ? 'En retard' : item.status.label" :severity="item.is_overdue ? 'danger' : invoiceStatusSeverity(item.status.value)" />
+        <span class="card-amount">{{ formatMoney(item.total, props.currency) }}</span>
+      </div>
+    </template>
+  </CardGrid>
   <DataTable
+    v-else
     :value="props.invoices"
     :loading="props.loading"
     :lazy="props.lazy"

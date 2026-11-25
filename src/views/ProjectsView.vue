@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import CardGrid from '@/components/CardGrid.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable, { type DataTablePageEvent, type DataTableRowClickEvent } from 'primevue/datatable'
@@ -19,6 +22,7 @@ import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import { periodLabel, projectStatusSeverity } from '@/utils/projects'
 
+const viewMode = useViewMode('projects')
 const auth = useAuthStore()
 const toast = useToast()
 const router = useRouter()
@@ -104,6 +108,7 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h1>Projets</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('projects.create')" label="Nouveau projet" icon="pi pi-plus" @click="dialogOpen = true" />
     </div>
 
@@ -117,7 +122,38 @@ onMounted(load)
       <ToggleButton v-model="filters.favorite" on-label="Favoris" off-label="Favoris" on-icon="pi pi-star-fill" off-icon="pi pi-star" />
     </div>
 
+    <CardGrid
+      v-if="viewMode === 'cards'"
+      :items="projects"
+      :loading="loading"
+      lazy
+      :total="total"
+      :rows="filters.per_page"
+      empty-text="Aucun projet."
+      @open="(p) => router.push({ name: 'project', params: { id: p.id } })"
+      @page="onPage"
+    >
+      <template #card="{ item }">
+        <div class="card-head">
+          <ClientLogo :name="item.name" :url="item.logo_url" :size="44" />
+          <div>
+            <span class="card-title"><i v-if="item.is_favorite" class="pi pi-star-fill favorite" aria-label="Favori" /> {{ item.name }}</span>
+            <span class="card-sub">{{ item.client?.name }}</span>
+          </div>
+        </div>
+        <div class="card-meta">
+          <span><i class="pi pi-user" /> {{ item.manager?.full_name ?? 'Pas de chef de projet' }}</span>
+          <span v-if="periodLabel(item.start_date, item.end_date)"><i class="pi pi-calendar" /> {{ periodLabel(item.start_date, item.end_date) }}</span>
+        </div>
+        <div class="card-foot">
+          <Tag :value="item.status.label" :severity="projectStatusSeverity(item.status.value)" />
+          <span class="muted" title="Notes"><i class="pi pi-comment" /> {{ item.notes_count ?? 0 }}</span>
+          <span class="muted" title="Documents"><i class="pi pi-paperclip" /> {{ item.documents_count ?? 0 }}</span>
+        </div>
+      </template>
+    </CardGrid>
     <DataTable
+      v-else
       :value="projects"
       :loading="loading"
       lazy

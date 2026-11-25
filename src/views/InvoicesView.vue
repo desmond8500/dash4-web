@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DataTablePageEvent } from 'primevue/datatable'
@@ -16,6 +18,7 @@ import { useSettingsStore } from '@/stores/settings'
 import InvoiceTable from '@/components/invoices/InvoiceTable.vue'
 import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
 
+const viewMode = useViewMode('invoices')
 const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
@@ -99,6 +102,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Factures</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <Button v-if="auth.can('invoices.create')" label="Facture libre" icon="pi pi-plus" severity="secondary" @click="createOpen = true" />
     </div>
 
@@ -133,6 +137,7 @@ onMounted(() => {
     <p class="muted hint">Pour facturer un devis accepté, ouvrez le devis puis « Facturer ».</p>
 
     <InvoiceTable
+      :cards="viewMode === 'cards'"
       :invoices="invoices"
       :currency="settings.currency()"
       :loading="loading"

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ViewModeToggle from '@/components/ViewModeToggle.vue'
+import { useViewMode } from '@/composables/useViewMode'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DataTablePageEvent } from 'primevue/datatable'
@@ -15,6 +17,7 @@ import { useAuthStore } from '@/stores/auth'
 import TaskDialog from '@/components/tasks/TaskDialog.vue'
 import TaskTable from '@/components/tasks/TaskTable.vue'
 
+const viewMode = useViewMode('tasks')
 const auth = useAuthStore()
 const toast = useToast()
 const router = useRouter()
@@ -78,6 +81,7 @@ onMounted(() => {
   <div class="page">
     <div class="page-header">
       <h1>Tâches</h1>
+      <ViewModeToggle v-model="viewMode" class="view-toggle" />
       <div class="actions">
         <Button label="Planning" icon="pi pi-calendar" severity="secondary" @click="router.push({ name: 'planning' })" />
         <Button v-if="auth.can('tasks.create')" label="Nouvelle tâche" icon="pi pi-plus" @click="createOpen = true" />
@@ -104,7 +108,7 @@ onMounted(() => {
       </IconField>
     </div>
 
-    <TaskTable :tasks="tasks" :loading="loading" lazy :total="total" @page="onPage" />
+    <TaskTable :cards="viewMode === 'cards'" :tasks="tasks" :loading="loading" lazy :total="total" @page="onPage" />
     <TaskDialog v-model:visible="createOpen" @saved="(t) => router.push({ name: 'task', params: { id: t.id } })" />
   </div>
 </template>

@@ -6,6 +6,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Menu from 'primevue/menu'
+import CardGrid from '@/components/CardGrid.vue'
 import type { ClientRequest } from '@dash4/shared'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -26,6 +27,8 @@ const props = defineProps<{
   rows?: number
   lazy?: boolean
   hideClient?: boolean
+  /** Affichage en cartes. */
+  cards?: boolean
 }>()
 const emit = defineEmits<{
   open: [request: ClientRequest]
@@ -52,7 +55,40 @@ function onRowClick(event: DataTableRowClickEvent): void {
 </script>
 
 <template>
+  <CardGrid
+    v-if="props.cards"
+    :items="props.requests"
+    :loading="props.loading"
+    :lazy="props.lazy"
+    :total="props.total"
+    :rows="props.rows ?? 25"
+    empty-text="Aucune demande."
+    @open="(r) => emit('open', r)"
+    @page="emit('page', $event)"
+  >
+    <template #card="{ item }">
+      <div class="card-head">
+        <i :class="[priorityIcon(item.priority.value), `priority-${item.priority.value}`]" :title="`Priorité ${item.priority.label.toLowerCase()}`" />
+        <div>
+          <span class="card-title">{{ props.hideClient ? item.source.label : requesterLabel(item) }}</span>
+          <span class="card-sub" :title="formatDateTime(item.created_at)">{{ item.source.label }} · {{ ageLabel(item.created_at) }}</span>
+        </div>
+        <Button v-if="auth.can('client_requests.update')" icon="pi pi-ellipsis-v" text rounded size="small" aria-label="Actions" @click.stop="openMenu($event, item)" />
+      </div>
+      <MarkdownView class="card-text" :text="item.body" />
+      <div class="card-meta">
+        <span><i class="pi pi-user" /> {{ item.assignee?.full_name ?? 'Personne en charge' }}</span>
+        <span v-if="!item.client && item.contact_phone"><i class="pi pi-phone" /> {{ item.contact_phone }}</span>
+        <span v-if="item.remind_at"><i class="pi pi-bell" /> {{ formatDateTime(item.remind_at) }}</span>
+      </div>
+      <div class="card-foot">
+        <Tag :value="item.status.label" :severity="requestStatusSeverity(item.status.value)" />
+        <Tag v-if="item.is_overdue" value="En retard" severity="danger" />
+      </div>
+    </template>
+  </CardGrid>
   <DataTable
+    v-else
     :value="props.requests"
     :loading="props.loading"
     :lazy="props.lazy"
