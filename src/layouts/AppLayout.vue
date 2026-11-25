@@ -6,7 +6,8 @@ import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
 import Drawer from 'primevue/drawer'
 import { useAuthStore } from '@/stores/auth'
-import { visibleMenu, type MenuEntry } from '@/menu'
+import { menuTree, visibleMenu, type MenuEntry } from '@/menu'
+import SidebarNav from '@/components/SidebarNav.vue'
 import { useClientRequestsStore } from '@/stores/clientRequests'
 import { useMessagingStore } from '@/stores/messaging'
 import { api } from '@/services/api'
@@ -52,7 +53,7 @@ function toggleSidebar(): void {
   localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed.value ? '1' : '0')
 }
 
-const entries = computed(() => visibleMenu(auth.canAny))
+const nodes = computed(() => menuTree(visibleMenu(auth.canAny)))
 const initials = computed(() =>
   auth.user ? `${auth.user.firstname[0] ?? ''}${auth.user.lastname[0] ?? ''}`.toUpperCase() : '',
 )
@@ -112,35 +113,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           @click="toggleSidebar"
         />
       </div>
-      <nav>
-        <RouterLink
-          v-for="entry in entries"
-          :key="entry.to"
-          :to="entry.to"
-          class="nav-link"
-          :title="sidebarCollapsed ? entry.label : undefined"
-        >
-          <i :class="entry.icon" />
-          <span>{{ entry.label }}</span>
-          <span v-if="badgeFor(entry)" class="nav-badge">{{ badgeFor(entry) }}</span>
-        </RouterLink>
-      </nav>
+      <SidebarNav :nodes="nodes" :collapsed="sidebarCollapsed" :badge-for="badgeFor" />
     </aside>
 
     <Drawer v-model:visible="mobileMenuOpen" header="Dash4">
-      <nav>
-        <RouterLink
-          v-for="entry in entries"
-          :key="entry.to"
-          :to="entry.to"
-          class="nav-link"
-          @click="mobileMenuOpen = false"
-        >
-          <i :class="entry.icon" />
-          <span>{{ entry.label }}</span>
-          <span v-if="badgeFor(entry)" class="nav-badge">{{ badgeFor(entry) }}</span>
-        </RouterLink>
-      </nav>
+      <SidebarNav :nodes="nodes" :badge-for="badgeFor" @navigate="mobileMenuOpen = false" />
     </Drawer>
 
     <div class="main">
@@ -195,6 +172,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .sidebar {
   width: 240px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
   padding: 1.25rem 0.75rem;
   background: var(--p-content-background);
   border-right: 1px solid var(--p-content-border-color);
@@ -240,47 +221,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 .sidebar-toggle {
   flex-shrink: 0;
-}
-
-.sidebar.collapsed .nav-link {
-  justify-content: center;
-  padding: 0.625rem;
-}
-
-.sidebar.collapsed .nav-link span {
-  display: none;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
-  color: var(--p-text-color);
-  text-decoration: none;
-}
-
-.nav-badge {
-  margin-left: auto;
-  min-width: 1.4rem;
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  background: var(--p-primary-color);
-  color: var(--p-primary-contrast-color);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.nav-link:hover {
-  background: var(--p-content-hover-background);
-}
-
-.nav-link.router-link-exact-active {
-  background: var(--p-highlight-background);
-  color: var(--p-highlight-color);
-  font-weight: 600;
 }
 
 .main {
