@@ -26,6 +26,7 @@ import ClientLogo from '@/components/ClientLogo.vue'
 import ProjectFormDialog from '@/components/ProjectFormDialog.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
+import RecordContactsPanel from '@/components/RecordContactsPanel.vue'
 import SitePanel from '@/components/site/SitePanel.vue'
 import BadgesPanel from '@/components/badges/BadgesPanel.vue'
 import ReceptionReportsPanel from '@/components/site/ReceptionReportsPanel.vue'
@@ -55,10 +56,11 @@ async function openSummary(): Promise<void> {
 
 const project = ref<Project | null>(null)
 const commentsCount = ref(0)
+const contactsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const editOpen = ref(false)
-const tab = ref(({ commentaires: 'comments', chantier: 'site', devis: 'quotes', taches: 'tasks', journaux: 'journals' } as Record<string, string>)[String(useRoute().query.onglet ?? '')] ?? 'notes')
+const tab = ref(({ commentaires: 'comments', contacts: 'contacts', chantier: 'site', devis: 'quotes', taches: 'tasks', journaux: 'journals' } as Record<string, string>)[String(useRoute().query.onglet ?? '')] ?? 'notes')
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoBusy = ref(false)
 
@@ -265,6 +267,7 @@ const shownJournals = computed(() => searchOnly(journals.value, search.journals,
       <Tabs v-model:value="tab">
         <TabList>
           <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
+          <Tab value="contacts">Contacts <Badge v-if="contactsCount" :value="contactsCount" severity="secondary" /></Tab>
           <Tab value="notes">Notes <Badge v-if="project.notes_count" :value="project.notes_count" severity="secondary" /></Tab>
           <Tab value="links">Liens <Badge v-if="project.links_count" :value="project.links_count" severity="secondary" /></Tab>
           <Tab value="documents">
@@ -279,6 +282,9 @@ const shownJournals = computed(() => searchOnly(journals.value, search.journals,
         </TabList>
         <TabPanels>
           <TabPanel value="comments"><CommentsPanel type="projects" :id="project.id" @changed="commentsCount = $event" /></TabPanel>
+          <TabPanel value="contacts">
+            <RecordContactsPanel type="projects" :id="project.id" :client-id="project.client_id" :can-edit="canUpdate" @changed="contactsCount = $event" />
+          </TabPanel>
           <TabPanel v-for="kind in (['notes', 'links', 'documents'] as const)" :key="kind" :value="kind">
             <AttachmentsPanel
               :kind="kind"

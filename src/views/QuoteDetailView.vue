@@ -28,6 +28,7 @@ import { useSettingsStore } from '@/stores/settings'
 import QuoteSectionEditor from '@/components/quotes/QuoteSectionEditor.vue'
 import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
+import RecordContactsPanel from '@/components/RecordContactsPanel.vue'
 import QuoteDepositsPanel from '@/components/quotes/QuoteDepositsPanel.vue'
 import QuoteExpensesPanel from '@/components/quotes/QuoteExpensesPanel.vue'
 import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel.vue'
@@ -56,7 +57,8 @@ const commentsCount = ref(0)
 const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
-const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'notes')
+const tab = ref(({ commentaires: 'comments', contacts: 'contacts' } as Record<string, string>)[String(useRoute().query.onglet ?? '')] ?? 'notes')
+const contactsCount = ref(0)
 const signedInput = ref<HTMLInputElement | null>(null)
 const banks = ref<BankAccount[]>([])
 
@@ -550,6 +552,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           <Tabs v-model:value="tab" scrollable>
             <TabList>
               <Tab value="comments">Commentaires <span v-if="commentsCount" class="count">{{ commentsCount }}</span></Tab>
+              <Tab value="contacts">Contacts <span v-if="contactsCount" class="count">{{ contactsCount }}</span></Tab>
               <Tab value="notes">Notes</Tab>
               <Tab value="documents">Documents</Tab>
               <Tab value="links">Liens</Tab>
@@ -611,6 +614,9 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
                   </tbody>
                 </table>
                 <p v-else class="muted">Ce devis n'a pas encore été envoyé par e-mail.</p>
+              </TabPanel>
+              <TabPanel value="contacts">
+                <RecordContactsPanel type="quotes" :id="quote.id" :client-id="quote.client_id" :can-edit="quote.can.update" @changed="contactsCount = $event" />
               </TabPanel>
               <TabPanel value="comments"><CommentsPanel type="quotes" :id="quote.id" @changed="commentsCount = $event" /></TabPanel>
               <TabPanel v-for="kind in (['notes', 'documents', 'links'] as const)" :key="kind" :value="kind">
