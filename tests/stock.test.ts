@@ -27,9 +27,9 @@ describe('stock et achats', () => {
     expect(receivedProgress({ lines: [{ received_quantity: 6, quantity: 10 }, { received_quantity: 1, quantity: 1 }] } as never)).toEqual({ received: 7, ordered: 11 })
   })
 
-  it('montre Stock au technicien et au magasinier, Achats seulement avec un droit d\'achat', () => {
+  it('montre les articles du stock au technicien et au magasinier, Achats seulement avec un droit d\'achat', () => {
     const labels = (permissions: string[]) => visibleMenu((p) => p.some((x) => permissions.includes(x))).map((e) => e.label)
-    expect(labels(['stock.view'])).toContain('Stock')
+    expect(labels(['stock.view'])).toContain('Articles')
     expect(labels(['stock.view'])).not.toContain('Achats')
     expect(labels(['purchases.view.own'])).toContain('Achats')
   })
