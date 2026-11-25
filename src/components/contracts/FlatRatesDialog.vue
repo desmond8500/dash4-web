@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -37,7 +37,9 @@ async function add(): Promise<void> {
     toast.add({ severity: 'error', summary: 'Ajout impossible', detail: e instanceof ApiError ? e.message : (e as Error).message, life: 5000 })
   }
 }
+// InputNumber (prix) peut mettre à jour son v-model juste après l'évènement blur : on attend le tick suivant.
 async function save(r: FlatRate): Promise<void> {
+  await nextTick()
   await api.contracts.updateFlatRate(r.id, { designation: r.designation, unit: r.unit, ...(r.price !== undefined ? { price: r.price } : {}) })
 }
 async function remove(r: FlatRate): Promise<void> {

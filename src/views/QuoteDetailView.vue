@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -169,8 +169,10 @@ async function run(action: () => Promise<Quote>, failure = 'Modification impossi
 
 const id = () => quote.value!.id
 
-function saveHeader(field: keyof typeof header): void {
+// La remise (InputNumber) peut mettre à jour son v-model juste après l'évènement blur : on attend le tick suivant.
+async function saveHeader(field: keyof typeof header): Promise<void> {
   if (!quote.value || !editable.value) return
+  if (field === 'discount_rate') await nextTick()
   const value = header[field]
   const payload: Record<string, unknown> =
     field === 'issued'

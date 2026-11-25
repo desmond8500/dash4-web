@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -123,7 +123,13 @@ watch(
   { immediate: true, deep: true },
 )
 
-function save(line: QuoteLine, field: keyof Draft): void {
+/**
+ * InputNumber (quantité, coût, coefficient) reformate sa valeur affichée au blur ;
+ * la mise à jour du v-model peut arriver juste après l'évènement blur. On attend donc
+ * le prochain tick pour être sûr de lire la valeur définitive avant de comparer/sauver.
+ */
+async function save(line: QuoteLine, field: keyof Draft): Promise<void> {
+  await nextTick()
   const draft = drafts.value[line.id]
   if (!draft) return
   const value = draft[field]
