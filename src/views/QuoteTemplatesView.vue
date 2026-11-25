@@ -464,20 +464,24 @@ const total = computed(() =>
           <label for="l-unit">Unité</label>
           <InputText id="l-unit" v-model="lineDraft.unit" class="full" />
         </div>
-        <div class="form-field">
-          <label for="l-qty">Quantité</label>
-          <InputNumber id="l-qty" v-model="lineDraft.quantity" :min="0" :max-fraction-digits="2" class="full" input-class="num-input" />
+        <div class="form-field form-field--full">
+          <div class="form-row-3">
+            <div class="form-field">
+              <label for="l-qty">Quantité</label>
+              <InputNumber id="l-qty" v-model="lineDraft.quantity" :min="0" :max-fraction-digits="2" class="full" input-class="num-input" />
+            </div>
+            <template v-if="auth.can('costs.view')">
+              <div class="form-field">
+                <label for="l-cost">Coût unitaire</label>
+                <InputNumber id="l-cost" v-model="lineDraft.unit_cost" :min="0" class="full" input-class="num-input" />
+              </div>
+              <div class="form-field">
+                <label for="l-coef">Coefficient</label>
+                <InputNumber id="l-coef" v-model="lineDraft.coefficient" :min="0" :max-fraction-digits="4" class="full" input-class="num-input" />
+              </div>
+            </template>
+          </div>
         </div>
-        <template v-if="auth.can('costs.view')">
-          <div class="form-field">
-            <label for="l-cost">Coût unitaire</label>
-            <InputNumber id="l-cost" v-model="lineDraft.unit_cost" :min="0" class="full" input-class="num-input" />
-          </div>
-          <div class="form-field">
-            <label for="l-coef">Coefficient</label>
-            <InputNumber id="l-coef" v-model="lineDraft.coefficient" :min="0" :max-fraction-digits="4" class="full" input-class="num-input" />
-          </div>
-        </template>
       </div>
       <template #footer>
         <Button label="Annuler" severity="secondary" text @click="lineModalOpen = false" />
@@ -582,6 +586,19 @@ const total = computed(() =>
 
 .line-article .full {
   flex: 1;
+}
+
+/* Quantité, coût unitaire et coefficient sur la même ligne dans la modale */
+.form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 :deep(.num-input) {
