@@ -21,7 +21,7 @@ const checks: Array<{ key: keyof ProposalOptions; label: string }> = [
   { key: 'show_client', label: 'Nom du client' },
   { key: 'show_project', label: 'Projet' },
   { key: 'show_introduction', label: 'Introduction du devis' },
-  { key: 'show_lines', label: 'Liste des équipements' },
+  { key: 'show_lines', label: 'Équipements (centrales et organes)' },
   { key: 'show_prices', label: 'Prix' },
   { key: 'show_footer', label: 'En-tête et pied de page' },
 ]
@@ -44,6 +44,8 @@ const sectionsWithText = () => (props.quote.sections ?? []).filter((s) => s.is_v
       Document qui décrit la solution, section par section, sans forcément montrer les prix.
       {{ sectionsWithText() }} section(s) sur {{ (props.quote.sections ?? []).filter((s) => s.is_visible).length }} ont un texte : il s'écrit
       sous chaque section, rubrique « Proposition technique ».
+      Comme dans Dash3, chaque section a sa page, et ses équipements (centrales et organes) sont présentés avec la photo,
+      la description et la fiche technique de l'article.
     </p>
     <div class="checks">
       <label v-for="c in checks" :key="c.key" class="check">
