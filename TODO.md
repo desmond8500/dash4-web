@@ -3,7 +3,7 @@
 ## Général
 
 - [x] Ajouter un bouton qui redirige vers le haut de la page (web et mobile) — bouton flottant « Haut de page » sur le web (toutes les pages, apparaît après défilement) ; sur mobile, bouton au-dessus de la barre d'onglets (fait remonter l'écran affiché, non testé sur l'app elle-même)
-- [ ] Réarrager les formulaires pour que les contenu des champs soient lisibles — lequel/lesquels ? écran, ou type de champ concerné ?
+- [x] Réarrager les formulaires pour que les contenu des champs soient lisibles — modèles de devis : désignation/référence n'étaient plus lisibles (colonnes écrasées par les autres champs à largeur fixe) ; le tableau défile désormais horizontalement et ces deux colonnes ont une largeur minimale.
 - [ ] toggle de la sidebar
 
 ## Modèles de devis

@@ -290,7 +290,7 @@ const total = computed(() =>
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="templateOpen" :header="templateId ? 'Modèle' : 'Nouveau modèle'" modal :style="{ width: '960px' }" :breakpoints="{ '1000px': '96vw' }">
+    <Dialog v-model:visible="templateOpen" :header="templateId ? 'Modèle' : 'Nouveau modèle'" modal :style="{ width: '1100px' }" :breakpoints="{ '1150px': '96vw' }">
       <div class="form-grid">
         <div class="form-field">
           <label for="tpl-name">Nom</label>
@@ -305,6 +305,7 @@ const total = computed(() =>
           <InputText id="tpl-desc" v-model="templateForm.description" :disabled="!canManage" />
         </div>
         <div class="form-field form-field--full">
+          <div class="table-wrap">
           <table class="list lines">
             <thead>
               <tr>
@@ -350,6 +351,7 @@ const total = computed(() =>
               <tr class="strong"><td :colspan="8">Total hors taxes du modèle</td><td class="num">{{ formatMoney(total, settings.currency()) }}</td><td /></tr>
             </tfoot>
           </table>
+          </div>
           <div v-if="canManage"><Button label="Ajouter une ligne" icon="pi pi-plus" size="small" text @click="templateForm.lines.push(emptyLine())" /></div>
         </div>
       </div>
@@ -387,8 +389,26 @@ const total = computed(() =>
   width: 100%;
 }
 
+/* Le tableau défile dans la fenêtre au lieu d'écraser désignation/référence */
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.lines {
+  min-width: 54rem;
+}
+
 .lines td {
   padding: 0.25rem;
+}
+
+.lines th:nth-child(2) {
+  min-width: 13rem;
+}
+
+.lines th:nth-child(3) {
+  min-width: 10rem;
 }
 
 .thumb-col {
