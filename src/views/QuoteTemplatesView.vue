@@ -4,6 +4,7 @@ import ListSearch from '@/components/ListSearch.vue'
 import { markdownToText } from '@dash4/shared'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -14,17 +15,20 @@ import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
-import type { QuoteLineCategory, QuoteSystem, QuoteTemplateSummary } from '@dash4/shared'
+import type { Article, QuoteLineArticle, QuoteLineCategory, QuoteSystem, QuoteTemplateSummary } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { linePrice } from '@/utils/quotes'
+import ArticlePicker from '@/components/stock/ArticlePicker.vue'
 
 /** Systèmes (vidéosurveillance, alarme…) et modèles de devis. Gestion : quotes.update + costs.view. */
 const auth = useAuthStore()
 const settings = useSettingsStore()
 const toast = useToast()
 const confirm = useConfirm()
+const router = useRouter()
+const articleHref = (id: number) => router.resolve({ name: 'article', params: { id } }).href
 const canManage = computed(() => auth.can('quotes.update') && auth.can('costs.view'))
 
 const systems = ref<QuoteSystem[]>([])
@@ -96,14 +100,43 @@ function removeSystem(system: QuoteSystem): void {
 }
 
 // Modèles
-type Line = { designation: string; reference: string; category: QuoteLineCategory; unit: string; quantity: number; unit_cost: number; coefficient: number }
+type Line = {
+  article_id: number | null
+  article?: QuoteLineArticle | null
+  designation: string
+  reference: string
+  category: QuoteLineCategory
+  unit: string
+  quantity: number
+  unit_cost: number
+  coefficient: number
+}
 const categories = (Object.entries(QUOTE_LINE_CATEGORY_LABELS) as Array<[QuoteLineCategory, string]>).map(([value, label]) => ({ value, label }))
 const templateOpen = ref(false)
 const templateId = ref<number | null>(null)
 const templateForm = ref({ name: '', description: '', system: null as number | null, lines: [] as Line[] })
 const errors = ref<Record<string, string[]>>({})
 
-const emptyLine = (): Line => ({ designation: '', reference: '', category: 'other', unit: '', quantity: 1, unit_cost: 0, coefficient: 1 })
+const emptyLine = (): Line => ({ article_id: null, article: null, designation: '', reference: '', category: 'other', unit: '', quantity: 1, unit_cost: 0, coefficient: 1 })
+
+/** Choix d'un article du stock pour une ligne : reprend sa désignation, sa catégorie, son unité et, avec costs.view, son coût et son coefficient. */
+function linkArticle(line: Line, article: Article): void {
+  line.article_id = article.id
+  line.article = { id: article.id, designation: article.designation, reference: article.reference, image_url: article.image_url, quantity: article.quantity, unit: article.unit, deleted: false }
+  line.designation = article.designation
+  line.reference = article.reference ?? ''
+  line.category = article.category.value
+  line.unit = article.unit ?? ''
+  if (auth.can('costs.view')) {
+    line.unit_cost = article.unit_cost ?? 0
+    line.coefficient = article.coefficient ?? 1
+  }
+}
+
+function unlinkArticle(line: Line): void {
+  line.article_id = null
+  line.article = null
+}
 
 async function openTemplate(id: number | null, systemId: number | null = null): Promise<void> {
   templateId.value = id
@@ -115,6 +148,8 @@ async function openTemplate(id: number | null, systemId: number | null = null): 
       description: t.description ?? '',
       system: t.quote_system_id,
       lines: t.lines.map((l) => ({
+        article_id: l.article_id,
+        article: l.article,
         designation: l.designation,
         reference: l.reference ?? '',
         category: l.category.value,
@@ -273,6 +308,7 @@ const total = computed(() =>
           <table class="list lines">
             <thead>
               <tr>
+                <th class="thumb-col" aria-label="Article" />
                 <th>Désignation</th><th>Référence</th><th style="width: 9rem">Catégorie</th><th style="width: 6rem">Qté</th><th style="width: 4.5rem">Unité</th>
                 <template v-if="auth.can('costs.view')"><th style="width: 8rem">Coût</th><th style="width: 5.5rem">Coef.</th></template>
                 <th v-if="auth.can('prices.view')" class="num" style="width: 8rem">Montant</th>
@@ -281,6 +317,22 @@ const total = computed(() =>
             </thead>
             <tbody>
               <tr v-for="(l, i) in templateForm.lines" :key="i">
+                <td class="thumb-col">
+                  <a
+                    v-if="l.article"
+                    :href="articleHref(l.article.id)"
+                    target="_blank"
+                    rel="noopener"
+                    class="thumb"
+                    :class="{ deleted: l.article.deleted }"
+                    :title="`${l.article.designation} · voir l'article du stock`"
+                  >
+                    <img v-if="l.article.image_url" :src="l.article.image_url" :alt="l.article.designation" loading="lazy" />
+                    <i v-else class="pi pi-box" />
+                  </a>
+                  <ArticlePicker v-else-if="canManage" placeholder="Article" @select="(a) => linkArticle(l, a)" />
+                  <Button v-if="l.article && canManage" icon="pi pi-times" text rounded size="small" severity="secondary" aria-label="Délier l'article" title="Délier l'article" @click="unlinkArticle(l)" />
+                </td>
                 <td><InputText v-model="l.designation" class="full" :disabled="!canManage" /></td>
                 <td><InputText v-model="l.reference" class="full" :disabled="!canManage" /></td>
                 <td><Select v-model="l.category" :options="categories" option-label="label" option-value="value" class="full" :disabled="!canManage" /></td>
@@ -295,7 +347,7 @@ const total = computed(() =>
               </tr>
             </tbody>
             <tfoot v-if="auth.can('prices.view') && auth.can('costs.view')">
-              <tr class="strong"><td :colspan="7">Total hors taxes du modèle</td><td class="num">{{ formatMoney(total, settings.currency()) }}</td><td /></tr>
+              <tr class="strong"><td :colspan="8">Total hors taxes du modèle</td><td class="num">{{ formatMoney(total, settings.currency()) }}</td><td /></tr>
             </tfoot>
           </table>
           <div v-if="canManage"><Button label="Ajouter une ligne" icon="pi pi-plus" size="small" text @click="templateForm.lines.push(emptyLine())" /></div>
@@ -337,6 +389,39 @@ const total = computed(() =>
 
 .lines td {
   padding: 0.25rem;
+}
+
+.thumb-col {
+  width: 8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid var(--p-content-border-color);
+  background: var(--p-content-background);
+  color: var(--p-text-muted-color);
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.thumb.deleted {
+  opacity: 0.5;
 }
 
 :deep(.num-input) {

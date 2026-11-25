@@ -40,6 +40,7 @@ const loading = ref(true)
 const notFound = ref(false)
 const busy = ref(false)
 const editOpen = ref(false)
+const duplicating = ref(false)
 const tab = ref(useRoute().query.onglet === 'commentaires' ? 'comments' : 'movements')
 const imageInput = ref<HTMLInputElement | null>(null)
 const projects = ref<Project[]>([])
@@ -130,6 +131,20 @@ function updateDependency(id: number, quantity: number | null): void {
 }
 const removeDependency = (id: number) => setDependencies(dependencyItems().filter((d) => d.article_id !== id))
 
+async function duplicate(): Promise<void> {
+  if (!article.value) return
+  duplicating.value = true
+  try {
+    const copy = await api.articles.duplicate(article.value.id)
+    toast.add({ severity: 'success', summary: 'Article dupliqué', detail: copy.designation, life: 3000 })
+    await router.push({ name: 'article', params: { id: copy.id } })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Duplication impossible', detail: errorDetail(e), life: 5000 })
+  } finally {
+    duplicating.value = false
+  }
+}
+
 function remove(): void {
   const a = article.value
   if (!a) return
@@ -164,6 +179,7 @@ function remove(): void {
           <Tag v-if="!article.is_active" value="Inactif" severity="secondary" />
         </div>
         <div class="actions">
+          <Button v-if="auth.can('stock.create')" label="Dupliquer" icon="pi pi-copy" severity="secondary" :loading="duplicating" @click="duplicate" />
           <Button v-if="article.can.update" label="Modifier" icon="pi pi-pencil" severity="secondary" @click="editOpen = true" />
           <Button v-if="article.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
         </div>

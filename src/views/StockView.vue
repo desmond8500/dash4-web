@@ -9,6 +9,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
+import Paginator, { type PageState } from 'primevue/paginator'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
@@ -42,6 +43,11 @@ const filters = reactive({
 })
 const showPrices = auth.can('prices.view')
 const showCosts = auth.can('costs.view')
+
+// Affichage en liste (tableau) ou en carte (grille avec photos), gardé d'une visite à l'autre
+const DISPLAY_KEY = 'dash4.stock.display'
+const display = ref<'list' | 'card'>(localStorage.getItem(DISPLAY_KEY) === 'card' ? 'card' : 'list')
+watch(display, (v) => localStorage.setItem(DISPLAY_KEY, v))
 
 async function load(): Promise<void> {
   loading.value = true
@@ -83,7 +89,7 @@ watch(
   },
 )
 
-function onPage(event: DataTablePageEvent): void {
+function onPage(event: DataTablePageEvent | PageState): void {
   filters.page = event.page + 1
   filters.per_page = event.rows
   void load()
@@ -134,9 +140,42 @@ onMounted(() => {
         <InputText v-model="filters.search" placeholder="Désignation, référence, code-barres, marque" class="search" />
       </IconField>
       <span v-if="filters.provider_id" class="muted">Un seul fournisseur · <a href="#" @click.prevent="(filters.provider_id = undefined), load()">tous</a></span>
+      <span class="spacer" />
+      <SelectButton
+        v-model="display"
+        :options="[{ v: 'list', i: 'pi pi-bars' }, { v: 'card', i: 'pi pi-th-large' }]"
+        option-value="v"
+        :allow-empty="false"
+        aria-label="Affichage"
+      >
+        <template #option="{ option }"><i :class="option.i" :title="option.v === 'list' ? 'Liste' : 'Carte'" /></template>
+      </SelectButton>
     </div>
 
+    <template v-if="display === 'card'">
+      <div class="cards">
+        <button v-for="a in articles" :key="a.id" type="button" class="article-card" @click="router.push({ name: 'article', params: { id: a.id } })">
+          <div class="card-image">
+            <img v-if="a.image_url" :src="a.image_url" :alt="a.designation" loading="lazy" />
+            <i v-else class="pi pi-box" />
+          </div>
+          <div class="card-body">
+            <strong>{{ a.designation }}</strong>
+            <span class="muted small">{{ [a.reference, a.brand?.name, a.category.label].filter(Boolean).join(' · ') }}</span>
+            <div class="card-foot">
+              <Tag :value="stockState(a).label" :severity="stockState(a).severity" />
+              <span class="muted">{{ formatQty(a.quantity) }} {{ a.unit ?? '' }}</span>
+            </div>
+            <div v-if="showPrices" class="muted small">{{ formatMoney(a.unit_price ?? 0) }}</div>
+          </div>
+        </button>
+      </div>
+      <p v-if="!loading && !articles.length" class="muted">Aucun article.</p>
+      <Paginator v-if="total > filters.per_page" :rows="filters.per_page" :total-records="total" :rows-per-page-options="[50, 100]" @page="onPage" />
+    </template>
+
     <DataTable
+      v-else
       :value="articles"
       :loading="loading"
       lazy
@@ -240,8 +279,76 @@ button.kpi {
   min-width: 18rem;
 }
 
+.spacer {
+  flex: 1;
+}
+
 .clickable :deep(tbody tr) {
   cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.article-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.5rem;
+  background: var(--p-content-background);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.article-card:hover {
+  background: var(--p-content-hover-background);
+}
+
+.card-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  border-radius: 0.375rem;
+  background: var(--p-content-hover-background);
+}
+
+.card-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.card-image > .pi {
+  font-size: 2rem;
+  color: var(--p-text-muted-color);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.card-body strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .title {

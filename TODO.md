@@ -2,15 +2,15 @@
 
 ## Général
 
-- [ ] Ajouter un bouton qui redirige vers le haut de la page (web et mobile)
-- [ ] Réarrager les formulaires pour que les contenu des champs soient lisibles
+- [x] Ajouter un bouton qui redirige vers le haut de la page (web et mobile) — bouton flottant « Haut de page » sur le web (toutes les pages, apparaît après défilement) ; sur mobile, bouton au-dessus de la barre d'onglets (fait remonter l'écran affiché, non testé sur l'app elle-même)
+- [ ] Réarrager les formulaires pour que les contenu des champs soient lisibles — lequel/lesquels ? écran, ou type de champ concerné ?
 - [ ] toggle de la sidebar
 
 ## Modèles de devis
 
-- [ ] Pouvoir ajouter un article du stock et remplir le champ
-- [ ] affichier les images des articles s'il sont liés aux articles du stock
+- [x] Pouvoir ajouter un article du stock et remplir le champ — colonne « Article » dans l'édition d'un modèle : recherche un article, reprend désignation/catégorie/unité (et coût/coefficient avec costs.view)
+- [x] affichier les images des articles s'il sont liés aux articles du stock — vignette (photo ou icône) devant chaque ligne liée, cliquable vers la fiche article
 
 ## Stock
-- [ ] Choix d'affichage des articles en carte ou en liste
-- [ ] Dupliquer un article
+- [x] Choix d'affichage des articles en carte ou en liste — bascule liste/carte à droite des filtres (Stock), gardée d'une visite à l'autre
+- [x] Dupliquer un article — bouton « Dupliquer » sur la fiche article (copie tout sauf code-barres, image et quantité, qui repart de 0)

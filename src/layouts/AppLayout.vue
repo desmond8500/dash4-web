@@ -14,6 +14,7 @@ import { applyTheme, storedTheme, toggledTheme } from '@/utils/theme'
 import { useToast } from 'primevue/usetoast'
 import NotificationBell from '@/components/NotificationBell.vue'
 import ClientRequestDialog from '@/components/ClientRequestDialog.vue'
+import ScrollTopButton from '@/components/ScrollTopButton.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -145,6 +146,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
       <main class="content">
         <RouterView />
       </main>
+      <ScrollTopButton />
 
       <ClientRequestDialog
         v-model:visible="requests.quickOpen"
