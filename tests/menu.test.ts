@@ -19,13 +19,14 @@ describe('menus et sous-menus', () => {
       'Messages',
       'Clients › Clients, Contacts, Demandes',
       'Stock et achats › Articles, Mouvements, Emplacements, Achats, Fournisseurs et marques, Icônes des plans',
+      'Outils pratiques',
     ])
   })
 
   it('montre un menu à une seule entrée comme un lien direct, et cache un menu vide', () => {
-    // Le magasinier sans outillage : « Parc automobile » seul → lien direct, pas de menu « Matériel »
-    expect(shape(['vehicles.view.own'])).toEqual(['Messages', 'Parc automobile'])
-    expect(shape([])).toEqual(['Messages'])
+    // Sans autre droit : « Outils pratiques » seul dans « Matériel » → lien direct, pas de menu
+    expect(shape([])).toEqual(['Messages', 'Outils pratiques'])
+    expect(shape(['vehicles.view.own'])).toEqual(['Messages', 'Matériel › Parc automobile, Outils pratiques'])
   })
 
   it('trouve l\'entrée de la page ouverte, la plus précise', () => {

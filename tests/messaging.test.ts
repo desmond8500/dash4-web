@@ -25,6 +25,6 @@ describe('messagerie', () => {
 
   it('montre la messagerie à tous', () => {
     expect(MENU.some((e) => e.to === '/messages')).toBe(true)
-    expect(visibleMenu(() => false).map((e) => e.to)).toEqual(['/messages'])
+    expect(visibleMenu(() => false).map((e) => e.to)).toEqual(['/messages', '/outils-pratiques'])
   })
 })

@@ -7,7 +7,7 @@ describe('menu des clients', () => {
   const menuFor = (permissions: string[]) =>
     visibleMenu((wanted) => wanted.some((p) => permissions.includes(p)))
       .map((e) => e.to)
-      .filter((to) => to !== '/messages')
+      .filter((to) => to !== '/messages' && to !== '/outils-pratiques') // ouverts à tous
 
   it('montre Clients et Contacts avec clients.view ou clients.view.own', () => {
     expect(menuFor(['clients.view'])).toEqual(['/clients', '/contacts'])

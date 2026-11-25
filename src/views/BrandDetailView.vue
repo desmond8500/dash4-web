@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RecordPracticalTools from '@/components/practicalTools/RecordPracticalTools.vue'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -114,6 +115,7 @@ function remove(): void {
         <h1>{{ brand.name }}</h1>
         <Button v-if="brand.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" :disabled="brand.articles_count > 0" :title="brand.articles_count ? 'Marque utilisée par des articles' : ''" @click="remove" />
       </div>
+      <RecordPracticalTools type="brands" :id="brand.id" />
 
       <Card>
         <template #content>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RecordPracticalTools from '@/components/practicalTools/RecordPracticalTools.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -111,6 +112,7 @@ function remove(): void {
           <Button v-if="provider.can.delete" icon="pi pi-trash" severity="danger" outlined aria-label="Supprimer" @click="remove" />
         </div>
       </div>
+      <RecordPracticalTools type="providers" :id="provider.id" />
 
       <Card>
         <template #content>

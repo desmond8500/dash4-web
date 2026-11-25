@@ -45,7 +45,7 @@ describe('navigation', () => {
 describe('menu', () => {
   it("n'affiche que les entrées autorisées", () => {
     const labels = visibleMenu((wanted) => wanted.includes('dashboard.view.own')).map((e) => e.label)
-    expect(labels).toEqual(['Tableau de bord', 'Messages'])
+    expect(labels).toEqual(['Tableau de bord', 'Messages', 'Outils pratiques'])
   })
 })
 

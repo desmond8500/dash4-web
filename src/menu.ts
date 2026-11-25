@@ -81,6 +81,8 @@ export const MENU: MenuEntry[] = [
 
   { group: 'equipment', label: 'Outillage', icon: 'pi pi-wrench', to: '/stock/outillage', permissions: ['tools.view', 'tools.view.own'] },
   { group: 'equipment', label: 'Parc automobile', icon: 'pi pi-car', to: '/parc', permissions: ['vehicles.view', 'vehicles.view.own'] },
+  // Calculs et conversions (texte Galaxy Dimension…) : ouverts à tous
+  { group: 'equipment', label: 'Outils pratiques', icon: 'pi pi-calculator', to: '/outils-pratiques', permissions: [] },
 
   { group: 'finance', label: 'Dépenses', icon: 'pi pi-wallet', to: '/depenses', permissions: ['accounting.view', 'accounting.view.own'] },
   { group: 'finance', label: 'Comptabilité', icon: 'pi pi-chart-bar', to: '/comptabilite', permissions: ['accounting.view'] },

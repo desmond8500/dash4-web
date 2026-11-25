@@ -241,6 +241,18 @@ export const router = createRouter({
           meta: { title: 'Outil', permissions: ['tools.view', 'tools.view.own'] },
         },
         {
+          path: 'outils-pratiques',
+          name: 'practical-tools',
+          component: () => import('@/views/PracticalToolsView.vue'),
+          meta: { title: 'Outils pratiques', permissions: [] },
+        },
+        {
+          path: 'outils-pratiques/:slug',
+          name: 'practical-tool',
+          component: () => import('@/views/PracticalToolView.vue'),
+          meta: { title: 'Outil pratique', permissions: [] },
+        },
+        {
           path: 'parc',
           name: 'vehicles',
           component: () => import('@/views/VehiclesView.vue'),
