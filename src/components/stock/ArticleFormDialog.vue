@@ -122,7 +122,7 @@ const fieldError = (f: string) => errors.value[f]?.[0]
 </script>
 
 <template>
-  <Dialog v-model:visible="visible" :header="props.article ? 'Modifier l\'article' : 'Nouvel article'" modal :style="{ width: '680px' }" :breakpoints="{ '720px': '95vw' }">
+  <Dialog v-model:visible="visible" :header="props.article ? 'Modifier l\'article' : 'Nouvel article'" modal :style="{ width: '780px' }" :breakpoints="{ '820px': '95vw' }">
     <form id="article-form" class="form-grid" @submit.prevent="save">
       <Message v-if="generalError" class="form-field--full" severity="error" :closable="false">{{ generalError }}</Message>
       <div class="form-field form-field--full">
@@ -155,42 +155,46 @@ const fieldError = (f: string) => errors.value[f]?.[0]
         <label for="a-provider">Fournisseur habituel</label>
         <Select id="a-provider" v-model="form.provider_id" :options="[{ id: null, name: 'Aucun' }, ...providers]" option-label="name" option-value="id" filter />
       </div>
-      <template v-if="canCosts">
+      <div class="form-field--full form-row">
+        <template v-if="canCosts">
+          <div class="form-field">
+            <label for="a-cost">Coût d'achat</label>
+            <InputNumber fluid v-model="form.unit_cost" input-id="a-cost" :min="0" :max-fraction-digits="2" />
+          </div>
+          <div class="form-field">
+            <label for="a-coef">Coefficient</label>
+            <InputNumber fluid v-model="form.coefficient" input-id="a-coef" :min="0" :max-fraction-digits="4" />
+            <small class="muted">Prix de vente : {{ formatMoney(Math.round(form.unit_cost * form.coefficient)) }}</small>
+          </div>
+        </template>
         <div class="form-field">
-          <label for="a-cost">Coût d'achat</label>
-          <InputNumber v-model="form.unit_cost" input-id="a-cost" :min="0" :max-fraction-digits="2" />
+          <label for="a-min">Seuil d'alerte</label>
+          <InputNumber fluid v-model="form.min_quantity" input-id="a-min" :min="0" :max-fraction-digits="2" placeholder="Aucun" />
         </div>
+      </div>
+      <div class="form-field--full form-row">
         <div class="form-field">
-          <label for="a-coef">Coefficient</label>
-          <InputNumber v-model="form.coefficient" input-id="a-coef" :min="0" :max-fraction-digits="4" />
-          <small class="muted">Prix de vente : {{ formatMoney(Math.round(form.unit_cost * form.coefficient)) }}</small>
+          <label for="a-location">Emplacement</label>
+          <Select id="a-location" v-model="form.storage_location_id" :options="[{ id: null, name: 'Non rangé' }, ...locations]" option-label="name" option-value="id" filter />
+          <small class="muted">Nouvel emplacement : Stock → Emplacements.</small>
         </div>
-      </template>
-      <div class="form-field">
-        <label for="a-min">Seuil d'alerte</label>
-        <InputNumber v-model="form.min_quantity" input-id="a-min" :min="0" :max-fraction-digits="2" placeholder="Aucun" />
-      </div>
-      <div class="form-field">
-        <label for="a-location">Emplacement</label>
-        <Select id="a-location" v-model="form.storage_location_id" :options="[{ id: null, name: 'Non rangé' }, ...locations]" option-label="name" option-value="id" filter />
-        <small class="muted">Nouvel emplacement : Stock → Emplacements.</small>
-      </div>
-      <div v-if="planIcons.icons.length" class="form-field">
-        <label for="a-icon">Icône sur les plans</label>
-        <Select id="a-icon" v-model="form.plan_icon_id" :options="[{ id: null, name: 'Symbole par défaut' }, ...planIcons.icons]" option-label="name" option-value="id" filter>
-          <template #option="{ option }">
-            <span class="icon-option">
-              <span class="icon-glyph"><PlanIconGlyph :icon="option.id ? option : null" :color="option.color ?? '#e11d48'" /></span>
-              {{ option.name }}<small v-if="option.category" class="muted"> · {{ option.category }}</small>
-            </span>
-          </template>
-        </Select>
-        <small class="muted">Ses équipements prennent cette icône sur les plans (Stock → Icônes des plans).</small>
-      </div>
-      <div v-if="creating" class="form-field">
-        <label for="a-initial">Quantité en stock aujourd'hui</label>
-        <InputNumber v-model="form.initial_quantity" input-id="a-initial" :min="0" :max-fraction-digits="2" placeholder="0" />
-        <small class="muted">Enregistrée comme un inventaire ; ensuite, la quantité change par les mouvements.</small>
+        <div v-if="planIcons.icons.length" class="form-field">
+          <label for="a-icon">Icône sur les plans</label>
+          <Select id="a-icon" v-model="form.plan_icon_id" :options="[{ id: null, name: 'Symbole par défaut' }, ...planIcons.icons]" option-label="name" option-value="id" filter>
+            <template #option="{ option }">
+              <span class="icon-option">
+                <span class="icon-glyph"><PlanIconGlyph :icon="option.id ? option : null" :color="option.color ?? '#e11d48'" /></span>
+                {{ option.name }}<small v-if="option.category" class="muted"> · {{ option.category }}</small>
+              </span>
+            </template>
+          </Select>
+          <small class="muted">Reprise par ses équipements sur les plans.</small>
+        </div>
+        <div v-if="creating" class="form-field">
+          <label for="a-initial">Quantité en stock aujourd'hui</label>
+          <InputNumber fluid v-model="form.initial_quantity" input-id="a-initial" :min="0" :max-fraction-digits="2" placeholder="0" />
+          <small class="muted">Enregistrée comme inventaire, puis suivie par les mouvements.</small>
+        </div>
       </div>
       <div class="form-field form-field--full">
         <label for="a-description">Description</label>
@@ -206,6 +210,20 @@ const fieldError = (f: string) => errors.value[f]?.[0]
 </template>
 
 <style scoped>
+/* Lignes de 2 ou 3 champs (coût, coefficient, seuil ; emplacement, icône, quantité), selon ceux qui s'affichent */
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+.form-row > .form-field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .form-row {
+    flex-direction: column;
+  }
+}
 .icon-option {
   display: flex;
   align-items: center;
