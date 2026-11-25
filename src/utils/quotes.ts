@@ -77,9 +77,16 @@ export function sortedByCategory(lines: Array<Pick<QuoteLine, 'id' | 'category'>
     .map(({ line }) => line.id)
 }
 
-/** Le quantitatif laisse de côté les forfaits et la main-d'œuvre : y a-t-il au moins une autre ligne ? */
-export function hasQuantities(lines: Array<Pick<QuoteLine, 'category'>>): boolean {
-  return lines.some((line) => line.category.value !== 'service')
+/** Le quantitatif laisse de côté les forfaits, la main-d'œuvre et les lignes retirées : en reste-t-il au moins une ? */
+export function hasQuantities(lines: Array<Pick<QuoteLine, 'category'> & Partial<Pick<QuoteLine, 'show_in_quantities'>>>): boolean {
+  return lines.some((line) => line.category.value !== 'service' && line.show_in_quantities !== false)
+}
+
+/** Sections et lignes proposées au choix du quantitatif : tout sauf les forfaits ; sections sans matériel écartées. */
+export function quantitiesSections<S extends { lines: Array<Pick<QuoteLine, 'category'>> }>(sections: S[]): S[] {
+  return sections
+    .map((s) => ({ ...s, lines: s.lines.filter((l) => l.category.value !== 'service') }))
+    .filter((s) => s.lines.length > 0)
 }
 
 /** Nom du fichier du quantitatif, comme celui que donne l'API (« Quantitatif DEV-2026-0001 - Bâtiment A.csv »). */

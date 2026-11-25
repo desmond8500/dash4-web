@@ -34,6 +34,7 @@ import QuoteExpensesPanel from '@/components/quotes/QuoteExpensesPanel.vue'
 import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel.vue'
 import QuoteProposalPanel from '@/components/quotes/QuoteProposalPanel.vue'
 import QuoteEmailDialog from '@/components/quotes/QuoteEmailDialog.vue'
+import QuoteQuantitiesLinesDialog from '@/components/quotes/QuoteQuantitiesLinesDialog.vue'
 import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
 import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
 import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
@@ -233,11 +234,14 @@ async function openPdf(): Promise<void> {
 
 // Quantitatif sans prix ni forfaits (main-d'œuvre) : tout le devis (sections imprimées, avec récapitulatif) ou une section
 const quantitiesMenu = ref<InstanceType<typeof Menu> | null>(null)
-const quantitiesItems = [
-  { label: 'PDF — toutes les sections', icon: 'pi pi-file-pdf', command: () => void exportQuantities('pdf') },
-  { label: 'Tableur (CSV) — toutes les sections', icon: 'pi pi-file-excel', command: () => void exportQuantities('csv') },
-]
+const quantitiesLinesOpen = ref(false)
+const quantitiesItems = computed(() => [
+  { label: 'PDF — toutes les sections', icon: 'pi pi-file-pdf', disabled: !canExportQuantities.value, command: () => void exportQuantities('pdf') },
+  { label: 'Tableur (CSV) — toutes les sections', icon: 'pi pi-file-excel', disabled: !canExportQuantities.value, command: () => void exportQuantities('csv') },
+  ...(quote.value?.can.update ? [{ separator: true }, { label: 'Choisir les lignes…', icon: 'pi pi-check-square', command: () => (quantitiesLinesOpen.value = true) }] : []),
+])
 const canExportQuantities = computed(() => (quote.value?.sections ?? []).some((s) => s.is_visible && hasQuantities(s.lines)))
+const hasMaterial = computed(() => (quote.value?.sections ?? []).some((s) => s.lines.some((l) => l.category.value !== 'service')))
 
 async function exportQuantities(format: 'pdf' | 'csv', section?: QuoteSection): Promise<void> {
   if (!quote.value) return
@@ -309,6 +313,7 @@ const canInvoice = computed(() => quote.value?.status.value === 'accepted' && au
 
 // Étape 2 : e-mail, modèles, proposition technique
 const emailOpen = ref(false)
+const proposalEmailOpen = ref(false)
 const pickerOpen = ref(false)
 const canManageTemplates = computed(() => auth.can('quotes.update') && auth.can('costs.view'))
 const templateDialog = ref(false)
@@ -320,6 +325,11 @@ const systems = ref<QuoteSystem[]>([])
 function onSent(q: Quote): void {
   setQuote(q)
   toast.add({ severity: 'success', summary: 'Devis envoyé', detail: q.emails?.[0]?.to.join(', '), life: 4000 })
+}
+
+function onProposalSent(q: Quote): void {
+  setQuote(q)
+  toast.add({ severity: 'success', summary: 'Proposition technique envoyée', detail: q.emails?.[0]?.to.join(', '), life: 4000 })
 }
 
 function insertTemplate(templateId: number, sectionId: number | undefined): void {
@@ -424,7 +434,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             severity="secondary"
             outlined
             aria-haspopup="true"
-            :disabled="busy || !canExportQuantities"
+            :disabled="busy || !hasMaterial"
             title="Matériel et quantités, sans prix ni forfaits"
             @click="quantitiesMenu?.toggle($event)"
           />
@@ -574,7 +584,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
                 <QuoteDeliveryNotesPanel :quote="quote" :can-edit="quote.can.update" @run="(a) => run(a)" />
               </TabPanel>
               <TabPanel value="proposal">
-                <QuoteProposalPanel :quote="quote" :can-edit="quote.can.update" :can-see-prices="quote.can.export" :busy="busy" @run="(a) => run(a)" @pdf="openProposalPdf" />
+                <QuoteProposalPanel :quote="quote" :can-edit="quote.can.update" :can-see-prices="quote.can.export" :busy="busy" @run="(a) => run(a)" @pdf="openProposalPdf" @send="proposalEmailOpen = true" />
               </TabPanel>
               <TabPanel v-if="quote.invoices !== undefined" value="invoices">
                 <div class="panel">
@@ -701,6 +711,8 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
 
       <QuoteSiteDialog v-if="quote.project_id" v-model:visible="siteOpen" :quote-id="quote.id" />
       <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
+      <QuoteQuantitiesLinesDialog v-model:visible="quantitiesLinesOpen" :quote="quote" @saved="setQuote" />
+      <QuoteEmailDialog v-model:visible="proposalEmailOpen" :quote="quote" document="proposal" @sent="onProposalSent" />
       <InvoiceCreateDialog
         v-if="canInvoice"
         v-model:visible="invoiceOpen"

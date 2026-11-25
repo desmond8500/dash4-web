@@ -11,7 +11,7 @@ import { api } from '@/services/api'
  * s'écrit dans la section (« Proposition technique »).
  */
 const props = defineProps<{ quote: Quote; canEdit: boolean; canSeePrices: boolean; busy: boolean }>()
-const emit = defineEmits<{ run: [action: () => Promise<Quote>]; pdf: [] }>()
+const emit = defineEmits<{ run: [action: () => Promise<Quote>]; pdf: []; send: [] }>()
 
 const options = reactive<ProposalOptions>({ ...props.quote.proposal_options })
 watch(() => props.quote.proposal_options, (o) => Object.assign(options, o))
@@ -68,13 +68,19 @@ const sectionsWithText = () => (props.quote.sections ?? []).filter((s) => s.is_v
         @change="(e: Event) => save({ client_label: (e.target as HTMLInputElement).value.trim() || null })"
       />
     </div>
-    <div>
+    <div class="proposal-actions">
       <Button label="Ouvrir la proposition technique" icon="pi pi-file-pdf" :loading="props.busy" @click="emit('pdf')" />
+      <Button v-if="props.canEdit" label="Envoyer par e-mail" icon="pi pi-send" severity="secondary" outlined @click="emit('send')" />
     </div>
   </div>
 </template>
 
 <style scoped>
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .checks {
   display: flex;
   flex-wrap: wrap;

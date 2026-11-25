@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Quote } from '@dash4/shared'
 import { visibleMenu } from '../src/menu'
-import { coefficientLabel, hasQuantities, linePrice, parseEmails, quantitiesFilename, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
+import { coefficientLabel, hasQuantities, linePrice, quantitiesSections, parseEmails, quantitiesFilename, quoteStatusSeverity, sortedByCategory, statusActions } from '../src/utils/quotes'
 
 const quote = (status: Quote['status']['value'], can: Partial<Quote['can']> = {}) =>
   ({
@@ -72,6 +72,19 @@ describe('quantitatif du devis', () => {
     expect(hasQuantities([line('service'), line('device')])).toBe(true)
     expect(hasQuantities([line('service')])).toBe(false)
     expect(hasQuantities([])).toBe(false)
+  })
+
+  it('ne compte pas les lignes retirées du quantitatif', () => {
+    expect(hasQuantities([{ category: { value: 'device', label: 'Organe' }, show_in_quantities: false }] as never)).toBe(false)
+  })
+
+  it('propose au choix les lignes de matériel, section par section', () => {
+    const l = (id: number, value: string) => ({ id, category: { value, label: value } })
+    const result = quantitiesSections([
+      { id: 1, lines: [l(1, 'device'), l(2, 'service')] },
+      { id: 2, lines: [l(3, 'service')] },
+    ] as never[]) as Array<{ id: number; lines: Array<{ id: number }> }>
+    expect(result.map((s) => [s.id, s.lines.map((x) => x.id)])).toEqual([[1, [1]]])
   })
 
   it('nomme le fichier comme l\'API, pour tout le devis ou une section', () => {
