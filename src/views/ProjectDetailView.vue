@@ -29,6 +29,7 @@ import AttachmentsPanel from '@/components/AttachmentsPanel.vue'
 import CommentsPanel from '@/components/CommentsPanel.vue'
 import RecordContactsPanel from '@/components/RecordContactsPanel.vue'
 import SitePanel from '@/components/site/SitePanel.vue'
+import ProjectTechniciansBlock from '@/components/site/ProjectTechniciansBlock.vue'
 import BadgesPanel from '@/components/badges/BadgesPanel.vue'
 import ReceptionReportsPanel from '@/components/site/ReceptionReportsPanel.vue'
 import TaskTable from '@/components/tasks/TaskTable.vue'
@@ -322,7 +323,10 @@ const shownJournals = computed(() => searchOnly(journals.value, search.journals,
             <TaskTable :tasks="shownTasks" hide-project />
             <TaskDialog v-model:visible="taskDialog" :project-id="project.id" @saved="(t) => router.push({ name: 'task', params: { id: t.id } })" />
           </TabPanel>
-          <TabPanel v-if="canSeeSite" value="site"><SitePanel :project-id="project.id" @loaded="site = $event" /></TabPanel>
+          <TabPanel v-if="canSeeSite" value="site">
+            <ProjectTechniciansBlock :project-id="project.id" :can-edit="canUpdate" />
+            <SitePanel :project-id="project.id" @loaded="site = $event" />
+          </TabPanel>
           <TabPanel v-if="canSeeSite" value="reception"><ReceptionReportsPanel :project-id="project.id" :site="site" /></TabPanel>
           <TabPanel v-if="auth.can('badges.view')" value="badges"><BadgesPanel :project-id="project.id" :client-id="project.client_id" @count="badgesCount = $event" /></TabPanel>
           <TabPanel v-if="canSeeJournals" value="journals">
