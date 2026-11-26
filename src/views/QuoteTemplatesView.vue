@@ -15,12 +15,13 @@ import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
-import type { Article, QuoteLineArticle, QuoteLineCategory, QuoteSystem, QuoteTemplateSummary } from '@dash4/shared'
+import type { Article, QuoteLineArticle, QuoteLineCategory, QuoteSystem, QuoteTemplateLine, QuoteTemplateSummary } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { CATEGORY_ORDER, linePrice } from '@/utils/quotes'
 import ArticlePicker from '@/components/stock/ArticlePicker.vue'
+import { apiErrorMessage } from '@/utils/errors'
 
 /** Systèmes (vidéosurveillance, alarme…) et modèles de devis. Gestion : quotes.update + costs.view. */
 const auth = useAuthStore()
@@ -166,6 +167,18 @@ function removeLine(index: number): void {
   templateForm.value.lines.splice(index, 1)
 }
 
+const toLine = (l: QuoteTemplateLine): Line => ({
+  article_id: l.article_id,
+  article: l.article,
+  designation: l.designation,
+  reference: l.reference ?? '',
+  category: l.category.value,
+  unit: l.unit ?? '',
+  quantity: l.quantity,
+  unit_cost: l.unit_cost ?? 0,
+  coefficient: l.coefficient ?? 1,
+})
+
 async function openTemplate(id: number | null, systemId: number | null = null): Promise<void> {
   templateId.value = id
   errors.value = {}
@@ -175,17 +188,7 @@ async function openTemplate(id: number | null, systemId: number | null = null): 
       name: t.name,
       description: t.description ?? '',
       system: t.quote_system_id,
-      lines: t.lines.map((l) => ({
-        article_id: l.article_id,
-        article: l.article,
-        designation: l.designation,
-        reference: l.reference ?? '',
-        category: l.category.value,
-        unit: l.unit ?? '',
-        quantity: l.quantity,
-        unit_cost: l.unit_cost ?? 0,
-        coefficient: l.coefficient ?? 1,
-      })),
+      lines: t.lines.map(toLine),
     }
   } else {
     templateForm.value = { name: '', description: '', system: systemId, lines: [] }
@@ -193,9 +196,9 @@ async function openTemplate(id: number | null, systemId: number | null = null): 
   templateOpen.value = true
 }
 
-async function saveTemplate(): Promise<void> {
+function templatePayload() {
   const f = templateForm.value
-  const payload = {
+  return {
     name: f.name.trim(),
     description: f.description.trim() || null,
     quote_system_id: f.system,
@@ -203,6 +206,10 @@ async function saveTemplate(): Promise<void> {
       .filter((l) => l.designation.trim())
       .map((l) => ({ ...l, designation: l.designation.trim(), reference: l.reference.trim() || null, unit: l.unit.trim() || null })),
   }
+}
+
+async function saveTemplate(): Promise<void> {
+  const payload = templatePayload()
   try {
     if (templateId.value) await api.quoteTemplates.update(templateId.value, payload)
     else await api.quoteTemplates.create(payload)
@@ -213,6 +220,39 @@ async function saveTemplate(): Promise<void> {
     if (e instanceof ApiError) errors.value = e.errors
     toast.add({ severity: 'error', summary: 'Enregistrement impossible', detail: (e as Error).message, life: 5000 })
   }
+}
+
+// Mise à jour du coût et du coefficient des lignes depuis les articles du stock liés
+const refreshing = ref(false)
+const linkedLinesCount = computed(() => templateForm.value.lines.filter((l) => l.article_id).length)
+
+function refreshFromArticles(): void {
+  const id = templateId.value
+  if (!id) return
+  confirm.require({
+    header: 'Mettre à jour depuis le stock',
+    message:
+      `Le modèle est d'abord enregistré, puis le coût et le coefficient des ${linkedLinesCount.value} ligne(s) liée(s) à un article ` +
+      "sont remplacés par ceux de l'article. Les articles supprimés ou sans coût sont ignorés.",
+    acceptProps: { label: 'Mettre à jour', icon: 'pi pi-refresh' },
+    rejectProps: { label: 'Annuler', severity: 'secondary', text: true },
+    accept: async () => {
+      refreshing.value = true
+      try {
+        await api.quoteTemplates.update(id, templatePayload())
+        const r = await api.quoteTemplates.refreshFromArticles(id)
+        templateForm.value.lines = r.template.lines.map(toLine)
+        errors.value = {}
+        toast.add({ severity: r.updated ? 'success' : 'info', summary: 'Modèle mis à jour', detail: r.message, life: 4000 })
+        await load()
+      } catch (e) {
+        if (e instanceof ApiError) errors.value = e.errors
+        toast.add({ severity: 'error', summary: 'Mise à jour impossible', detail: apiErrorMessage(e), life: 5000 })
+      } finally {
+        refreshing.value = false
+      }
+    },
+  })
 }
 
 function removeTemplate(t: QuoteTemplateSummary): void {
@@ -359,6 +399,17 @@ const total = computed(() =>
               severity="secondary"
               :disabled="templateForm.lines.length < 2 || linesAlreadySorted"
               @click="sortLinesByCategory"
+            />
+            <Button
+              v-if="templateId"
+              label="Mettre à jour coûts et coef. depuis le stock"
+              icon="pi pi-refresh"
+              size="small"
+              text
+              severity="secondary"
+              :loading="refreshing"
+              :disabled="!linkedLinesCount || !templateForm.name.trim()"
+              @click="refreshFromArticles"
             />
           </div>
           <div class="table-wrap">
