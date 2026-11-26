@@ -37,6 +37,8 @@ const props = defineProps<{
   forms?: boolean
   /** Lier une ligne à un article du stock (aussi sur un devis accepté). */
   canLink?: boolean
+  /** Peut copier la section vers d'autres devis (même si ce devis n'est plus modifiable). */
+  canDuplicate?: boolean
 }>()
 const emit = defineEmits<{
   updateSection: [payload: { title?: string; is_visible?: boolean }]
@@ -48,6 +50,8 @@ const emit = defineEmits<{
   orderLines: [ids: number[]]
   saveProposal: [text: string | null]
   saveAsTemplate: []
+  /** Dupliquer la section : dans ce devis, ou dans d'autres devis. */
+  duplicate: [where: 'here' | 'others']
   linkArticle: [lineId: number, articleId: number | null]
   /** Quantitatif de la section, sans prix ni forfaits. */
   exportQuantities: [format: 'pdf' | 'csv']
@@ -214,6 +218,13 @@ function move(index: number, direction: -1 | 1): void {
   emit('orderLines', ids)
 }
 
+// Dupliquer la section et son contenu : dans ce devis (s'il est modifiable) ou dans d'autres devis
+const duplicateMenu = ref<InstanceType<typeof Menu> | null>(null)
+const duplicateItems = computed(() => [
+  ...(props.editable ? [{ label: 'Dans ce devis', icon: 'pi pi-clone', command: () => emit('duplicate', 'here') }] : []),
+  { label: "Dans d'autres devis…", icon: 'pi pi-copy', command: () => emit('duplicate', 'others') },
+])
+
 // Quantitatif de la section (sans forfaits ni main-d'œuvre) : PDF ou tableur
 const quantitiesMenu = ref<InstanceType<typeof Menu> | null>(null)
 const quantitiesItems = [
@@ -323,6 +334,10 @@ const money = (v: number) => formatMoney(v, props.currency)
         <Button icon="pi pi-arrow-up" text rounded size="small" :disabled="props.first" aria-label="Monter la section" @click="emit('moveSection', -1)" />
         <Button icon="pi pi-arrow-down" text rounded size="small" :disabled="props.last" aria-label="Descendre la section" @click="emit('moveSection', 1)" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" aria-label="Supprimer la section" @click="emit('removeSection')" />
+      </template>
+      <template v-if="props.canDuplicate">
+        <Button icon="pi pi-clone" text rounded size="small" title="Dupliquer la section" aria-label="Dupliquer la section" aria-haspopup="true" @click="duplicateMenu?.toggle($event)" />
+        <Menu ref="duplicateMenu" :model="duplicateItems" popup />
       </template>
     </header>
 

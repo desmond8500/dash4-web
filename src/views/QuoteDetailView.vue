@@ -22,7 +22,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { ApiError, EDITABLE_QUOTE_STATUSES, formatMoney, TAX_MODE_LABELS } from '@dash4/shared'
-import type { BankAccount, Quote, QuoteLinePayload, QuoteSection, QuoteSystem, TaxMode } from '@dash4/shared'
+import type { BankAccount, Quote, QuoteLinePayload, QuoteSection, QuoteSystem, TaxMode, QuoteSectionCopy } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -36,6 +36,7 @@ import QuoteDeliveryNotesPanel from '@/components/quotes/QuoteDeliveryNotesPanel
 import QuoteProposalPanel from '@/components/quotes/QuoteProposalPanel.vue'
 import QuoteEmailDialog from '@/components/quotes/QuoteEmailDialog.vue'
 import QuoteQuantitiesLinesDialog from '@/components/quotes/QuoteQuantitiesLinesDialog.vue'
+import QuoteSectionCopyDialog from '@/components/quotes/QuoteSectionCopyDialog.vue'
 import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
 import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
 import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
@@ -373,6 +374,31 @@ function moveSection(index: number, direction: -1 | 1): void {
   ;[ids[index], ids[target]] = [ids[target]!, ids[index]!]
   void run(() => api.quotes.orderSections(id(), ids))
 }
+// Dupliquer une section : dans ce devis (juste après), ou dans d'autres devis (fenêtre de choix)
+const copySection = ref<QuoteSection | null>(null)
+const copyOpen = ref(false)
+const canDuplicateSections = computed(() => auth.canAny(['quotes.update', 'quotes.update.own']))
+function duplicateSection(section: QuoteSection, where: 'here' | 'others'): void {
+  if (where === 'here') {
+    void run(async () => {
+      const { quote: q } = await api.quotes.duplicateSection(section.id)
+      toast.add({ severity: 'success', summary: 'Section dupliquée', detail: `« ${section.title} (copie) »`, life: 3000 })
+      return q
+    }, 'Duplication impossible')
+    return
+  }
+  copySection.value = section
+  copyOpen.value = true
+}
+function onSectionCopied(copies: QuoteSectionCopy[]): void {
+  toast.add({
+    severity: 'success',
+    summary: copies.length > 1 ? `Section copiée dans ${copies.length} devis` : 'Section copiée',
+    detail: copies.map((c) => c.number).join(', '),
+    life: 5000,
+  })
+}
+
 function removeSection(section: QuoteSection): void {
   confirm.require({
     header: 'Supprimer la section',
@@ -520,6 +546,8 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
             @save-as-template="openSaveTemplate(section)"
             @update-section="(p) => updateSection(section.id, p)"
             @remove-section="removeSection(section)"
+            :can-duplicate="canDuplicateSections"
+            @duplicate="(where) => duplicateSection(section, where)"
             @move-section="(d) => moveSection(index, d)"
             @add-line="(p) => addLine(section.id, p)"
             @update-line="updateLine"
@@ -702,6 +730,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
       <QuoteSiteDialog v-if="quote.project_id" v-model:visible="siteOpen" :quote-id="quote.id" />
       <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
       <QuoteQuantitiesLinesDialog v-model:visible="quantitiesLinesOpen" :quote="quote" @saved="setQuote" />
+      <QuoteSectionCopyDialog v-model:visible="copyOpen" :section="copySection" :quote-id="quote.id" @copied="onSectionCopied" />
       <QuoteEmailDialog v-model:visible="proposalEmailOpen" :quote="quote" document="proposal" @sent="onProposalSent" />
       <InvoiceCreateDialog
         v-if="canInvoice"
