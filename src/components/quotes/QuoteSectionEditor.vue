@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -72,6 +72,29 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   if (fullscreen.value) document.body.classList.remove('no-scroll')
 })
+// En-tête du tableau collant : quand le tableau tient en largeur, il colle en haut de la page (ou sous le titre
+// de la section en plein écran) ; sinon le tableau défile dans la carte, en-tête collé en haut de cette zone.
+const tableWrap = ref<HTMLElement | null>(null)
+const sectionHead = ref<HTMLElement | null>(null)
+const tableFits = ref(true)
+const headHeight = ref(0)
+let resizer: ResizeObserver | null = null
+function measure(): void {
+  const wrap = tableWrap.value
+  const table = wrap?.querySelector('table')
+  if (wrap && table) tableFits.value = table.offsetWidth <= wrap.clientWidth + 1
+  headHeight.value = sectionHead.value?.offsetHeight ?? 0
+}
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined') return
+  resizer = new ResizeObserver(measure)
+  for (const el of [tableWrap.value, tableWrap.value?.querySelector('table'), sectionHead.value]) if (el) resizer.observe(el)
+  measure()
+})
+onBeforeUnmount(() => resizer?.disconnect())
+watch(fullscreen, () => nextTick(measure))
+// En plein écran, la section défile et son titre colle à -1rem : l'en-tête du tableau se place juste dessous
+const stickyTop = computed(() => (fullscreen.value && tableFits.value ? `${Math.max(0, headHeight.value - 16)}px` : '0px'))
 watch(() => props.forms, (v) => (formsOpen.value = v ?? false))
 const showForms = computed(() => props.editable && formsOpen.value)
 const columns = computed(() => 5 + (props.editPrices ? 2 : 0) + (props.showPrices ? 2 : 0) + (props.editable || props.canLink ? 1 : 0))
@@ -236,7 +259,7 @@ const money = (v: number) => formatMoney(v, props.currency)
 <template>
   <Teleport to="body" :disabled="!fullscreen">
   <section class="quote-section" :class="{ hidden: !props.section.is_visible, fullscreen }">
-    <header>
+    <header ref="sectionHead">
       <InputText
         v-model="title"
         class="title"
@@ -303,7 +326,7 @@ const money = (v: number) => formatMoney(v, props.currency)
       </template>
     </header>
 
-    <div class="table-wrap">
+    <div ref="tableWrap" class="table-wrap" :class="{ fits: tableFits }" :style="{ '--sticky-top': stickyTop }">
     <table class="lines">
       <thead>
         <tr>
@@ -530,10 +553,24 @@ const money = (v: number) => formatMoney(v, props.currency)
   opacity: 1;
 }
 
-/* Le tableau défile dans la carte au lieu d'en déborder */
+/* Le tableau défile dans la carte au lieu d'en déborder (en-tête collé en haut de cette zone) ;
+   s'il tient en largeur, la zone ne défile plus et l'en-tête colle en haut de la page */
 .table-wrap {
-  overflow-x: auto;
+  overflow: auto;
   max-width: 100%;
+  max-height: calc(100vh - 7rem);
+}
+.table-wrap.fits {
+  overflow: visible;
+  max-height: none;
+}
+
+.lines thead th {
+  position: sticky;
+  top: var(--sticky-top, 0px);
+  z-index: 1;
+  background: var(--p-content-background);
+  box-shadow: inset 0 -1px 0 var(--p-content-border-color);
 }
 
 .quote-section.hidden {
