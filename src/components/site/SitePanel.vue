@@ -157,6 +157,14 @@ async function saveProgress(): Promise<void> {
 }
 
 // --- Équipements
+// Détail d'un équipement : documentation de son article du stock (documents, liens, notes)
+const articleDocKinds = [
+  { value: 'documents', label: 'Documents' },
+  { value: 'links', label: 'Liens' },
+  { value: 'notes', label: 'Notes' },
+] as const
+const articleDocKind = ref<'documents' | 'links' | 'notes'>('documents')
+
 const equipmentOpen = ref(false)
 const editing = ref<{ system: InstalledSystem | null; equipment: Equipment | null; parentId: number | null }>({ system: null, equipment: null, parentId: null })
 function openEquipment(system: InstalledSystem, equipment: Equipment | null = null, parentId: number | null = null): void {
@@ -389,6 +397,16 @@ async function removeCatalog(id: number): Promise<void> {
         <MarkdownView :text="detail.description" />
         <h4>Photos et documents</h4>
         <AttachmentsPanel kind="documents" type="equipment" :id="detail.id" :can-add="can.manage" :can-manage="can.delete" />
+
+        <!-- Documentation de l'article du stock (fiche technique, notice, liens, notes), en lecture -->
+        <template v-if="detail.article && auth.can('stock.view')">
+          <div class="article-doc-head">
+            <h4>Documentation de l'article</h4>
+            <RouterLink :to="{ name: 'article', params: { id: detail.article.id } }" class="muted">Ouvrir l'article <i class="pi pi-arrow-right" /></RouterLink>
+          </div>
+          <SelectButton v-model="articleDocKind" :options="articleDocKinds" option-label="label" option-value="value" :allow-empty="false" aria-label="Documentation de l'article" />
+          <AttachmentsPanel :key="`${detail.article.id}-${articleDocKind}`" :kind="articleDocKind" type="articles" :id="detail.article.id" :can-add="false" :can-manage="false" />
+        </template>
       </template>
     </Dialog>
 
@@ -527,6 +545,17 @@ async function removeCatalog(id: number): Promise<void> {
   flex: 1;
 }
 
+.article-doc-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+.article-doc-head a {
+  font-size: 0.875rem;
+  text-decoration: none;
+}
 .equipment {
   margin-top: 0.5rem;
 }
