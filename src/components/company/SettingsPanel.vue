@@ -25,6 +25,7 @@ const form = reactive({
   default_tax: 'vat' as TaxMode,
   numbering: {} as Record<DocumentType, string>,
   reminders: { auto: false, days: [7, 15, 30] as number[] },
+  import_costs: { usd_rate: 600, tax_rate: 20, shipping: 10000 },
 })
 // Paliers de relance saisis « 7, 15, 30 »
 const reminderDays = computed({
@@ -63,6 +64,7 @@ function fill(s: AppSettings): void {
     default_tax: s.default_tax,
     numbering: { ...s.numbering },
     reminders: { ...(s.reminders ?? { auto: false, days: [7, 15, 30] }) },
+    import_costs: { ...(s.import_costs ?? { usd_rate: 600, tax_rate: 20, shipping: 10000 }) },
   })
   previews.value = { ...s.next_numbers }
 }
@@ -100,7 +102,7 @@ async function save(): Promise<void> {
   saving.value = true
   errors.value = {}
   try {
-    fill(await api.settings.update({ ...form, numbering: { ...form.numbering }, reminders: { ...form.reminders, days: [...form.reminders.days] } }))
+    fill(await api.settings.update({ ...form, numbering: { ...form.numbering }, reminders: { ...form.reminders, days: [...form.reminders.days] }, import_costs: { ...form.import_costs } }))
     toast.add({ severity: 'success', summary: 'Paramètres enregistrés', life: 2500 })
   } catch (e) {
     if (e instanceof ApiError) errors.value = e.errors
@@ -168,6 +170,19 @@ async function save(): Promise<void> {
         <label class="inline"><ToggleSwitch v-model="form.reminders.auto" :disabled="!canEdit" /> Envoyer les relances au client automatiquement</label>
       </div>
     </div>
+    <div class="form-field form-field--full">
+      <h3>Articles achetés à l'étranger</h3>
+      <p class="muted small">
+        Un article avec un prix en euro ou en dollar a son coût d'achat calculé en F CFA : prix × taux, plus la taxe,
+        plus les frais de port. L'euro est à parité fixe (1 € = 655,957 F) ; le taux du dollar est à mettre à jour ici.
+        Un changement s'applique aux articles enregistrés ensuite.
+      </p>
+      <div class="import-costs">
+        <label>1 $ = <InputNumber v-model="form.import_costs.usd_rate" :min="1" :max-fraction-digits="3" suffix=" F" :disabled="!canEdit" :invalid="!!fieldError('import_costs.usd_rate')" /></label>
+        <label>Taxe <InputNumber v-model="form.import_costs.tax_rate" :min="0" :max="500" :max-fraction-digits="2" suffix=" %" :disabled="!canEdit" :invalid="!!fieldError('import_costs.tax_rate')" /></label>
+        <label>Frais de port <InputNumber v-model="form.import_costs.shipping" :min="0" suffix=" F" :disabled="!canEdit" :invalid="!!fieldError('import_costs.shipping')" /></label>
+      </div>
+    </div>
     <Message v-if="!canEdit" class="form-field--full" severity="info" :closable="false">
       Lecture seule : seul l'administrateur modifie les paramètres.
     </Message>
@@ -178,6 +193,16 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
+.import-costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+.import-costs label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .reminders {
   display: flex;
   gap: 1.5rem;

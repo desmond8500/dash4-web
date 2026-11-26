@@ -8,8 +8,8 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import { ApiError, formatMoney, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
-import type { Article, ArticlePayload, Brand, Provider, QuoteLineCategory, StorageLocation } from '@dash4/shared'
+import { ApiError, EUR_XOF_RATE, formatMoney, importCostCfa, QUOTE_LINE_CATEGORY_LABELS } from '@dash4/shared'
+import type { Article, ArticlePayload, Brand, ForeignCurrency, ImportCostParameters, Provider, QuoteLineCategory, StorageLocation } from '@dash4/shared'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { usePlanIconsStore } from '@/stores/planIcons'
@@ -42,6 +42,8 @@ const form = reactive({
   provider_id: null as number | null,
   unit_cost: 0,
   coefficient: 1,
+  foreign_price: null as number | null,
+  foreign_currency: 'EUR' as ForeignCurrency,
   min_quantity: null as number | null,
   storage_location_id: null as number | null,
   plan_icon_id: null as number | null,
@@ -65,6 +67,8 @@ watch(visible, async (open) => {
     provider_id: a?.provider_id ?? null,
     unit_cost: a?.unit_cost ?? 0,
     coefficient: a?.coefficient ?? 1,
+    foreign_price: a?.foreign_price ?? null,
+    foreign_currency: a?.foreign_currency ?? 'EUR',
     min_quantity: a?.min_quantity ?? null,
     storage_location_id: a?.storage_location_id ?? null,
     plan_icon_id: a?.plan_icon_id ?? null,
@@ -77,6 +81,33 @@ watch(visible, async (open) => {
   providers.value = p.status === 'fulfilled' ? p.value.data : []
   locations.value = l.status === 'fulfilled' ? l.value : []
   void planIcons.load()
+  if (canCosts.value && !importParams.value) {
+    try {
+      importParams.value = await api.articles.importCosts()
+    } catch {
+      importParams.value = null // l'API calcule de toute façon le coût à l'enregistrement
+    }
+  }
+})
+
+// Acheté à l'étranger : prix en € ou $ → coût en F CFA (taux, + taxe, + frais de port), calculé comme l'API
+const importParams = ref<ImportCostParameters | null>(null)
+const currencies = [
+  { value: 'EUR', label: '€ euro' },
+  { value: 'USD', label: '$ dollar' },
+]
+const hasForeignPrice = computed(() => form.foreign_price !== null && form.foreign_price !== undefined)
+const importedCost = computed(() =>
+  hasForeignPrice.value && importParams.value ? importCostCfa(form.foreign_price!, form.foreign_currency, importParams.value) : null,
+)
+const importDetail = computed(() => {
+  const p = importParams.value
+  if (!p) return ''
+  const rate = form.foreign_currency === 'EUR' ? EUR_XOF_RATE : p.rates.USD
+  return `× ${rate.toLocaleString('fr-FR')} F, + ${p.tax_rate} % de taxe, + ${formatMoney(p.shipping)} de port`
+})
+watch(importedCost, (cost) => {
+  if (cost !== null) form.unit_cost = cost
 })
 
 async function save(): Promise<void> {
@@ -94,7 +125,14 @@ async function save(): Promise<void> {
     plan_icon_id: form.plan_icon_id,
     description: text(form.description),
     is_active: form.is_active,
-    ...(canCosts.value ? { unit_cost: form.unit_cost, coefficient: form.coefficient } : {}),
+    ...(canCosts.value
+      ? {
+          unit_cost: form.unit_cost,
+          coefficient: form.coefficient,
+          foreign_price: hasForeignPrice.value ? form.foreign_price : null,
+          foreign_currency: hasForeignPrice.value ? form.foreign_currency : null,
+        }
+      : {}),
     ...(creating.value ? { initial_quantity: form.initial_quantity, client_uuid: crypto.randomUUID() } : {}),
   }
   saving.value = true
@@ -161,8 +199,17 @@ const fieldError = (f: string) => errors.value[f]?.[0]
         </div>
         <template v-if="canCosts">
           <div class="form-field">
+            <label for="a-foreign">Prix à l'étranger</label>
+            <div class="foreign">
+              <InputNumber fluid v-model="form.foreign_price" input-id="a-foreign" :min="0" :max-fraction-digits="2" placeholder="Si acheté hors zone CFA" />
+              <Select v-model="form.foreign_currency" :options="currencies" option-label="label" option-value="value" aria-label="Devise" class="currency" />
+            </div>
+            <small v-if="hasForeignPrice && importDetail" class="muted">{{ importDetail }}</small>
+          </div>
+          <div class="form-field">
             <label for="a-cost">Coût d'achat</label>
-            <InputNumber fluid v-model="form.unit_cost" input-id="a-cost" :min="0" :max-fraction-digits="2" />
+            <InputNumber fluid v-model="form.unit_cost" input-id="a-cost" :min="0" :max-fraction-digits="2" :disabled="hasForeignPrice" />
+            <small v-if="hasForeignPrice" class="muted">Calculé depuis le prix à l'étranger.</small>
           </div>
           <div class="form-field">
             <label for="a-coef">Coefficient</label>
@@ -213,6 +260,15 @@ const fieldError = (f: string) => errors.value[f]?.[0]
 </template>
 
 <style scoped>
+/* Prix à l'étranger : montant et devise côte à côte */
+.foreign {
+  display: flex;
+  gap: 0.4rem;
+}
+.foreign .currency {
+  flex: 0 0 6.5rem;
+}
+
 /* Lignes de 1 à 3 champs (catégorie, unité, marque ; fournisseur, coût, coefficient ; seuil, emplacement, icône), selon ceux qui s'affichent */
 .form-row {
   display: flex;
