@@ -158,11 +158,11 @@ async function saveProgress(): Promise<void> {
 
 // --- Équipements
 // Détail d'un équipement : documentation de son article du stock (documents, liens, notes)
-const articleDocKinds = [
+const articleDocKinds: { value: 'documents' | 'links' | 'notes'; label: string }[] = [
   { value: 'documents', label: 'Documents' },
   { value: 'links', label: 'Liens' },
   { value: 'notes', label: 'Notes' },
-] as const
+]
 const articleDocKind = ref<'documents' | 'links' | 'notes'>('documents')
 
 const equipmentOpen = ref(false)
