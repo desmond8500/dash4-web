@@ -40,6 +40,7 @@ import QuoteSectionCopyDialog from '@/components/quotes/QuoteSectionCopyDialog.v
 import QuoteTemplatePicker from '@/components/quotes/QuoteTemplatePicker.vue'
 import InvoiceCreateDialog from '@/components/invoices/InvoiceCreateDialog.vue'
 import QuoteSiteDialog from '@/components/quotes/QuoteSiteDialog.vue'
+import QuoteClientDialog from '@/components/quotes/QuoteClientDialog.vue'
 import { invoiceStatusSeverity } from '@/utils/invoices'
 import Dialog from 'primevue/dialog'
 import Menu from 'primevue/menu'
@@ -300,6 +301,7 @@ function remove(): void {
 const invoiceOpen = ref(false)
 // Appareils du chantier depuis le devis (chef de projet ou gestionnaire du chantier)
 const siteOpen = ref(false)
+const clientOpen = ref(false)
 const canToSite = computed(() => !!quote.value?.project_id && auth.canAny(['sites.update', 'sites.update.own']))
 
 const canInvoice = computed(() => quote.value?.status.value === 'accepted' && auth.can('invoices.create'))
@@ -433,7 +435,9 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
           <Tag :value="quote.status.label" :severity="quoteStatusSeverity(quote.status.value)" />
           <Tag v-if="quote.signed_at" value="Copie signée" severity="success" icon="pi pi-verified" />
           <span class="muted">
-            <RouterLink :to="{ name: 'client', params: { id: quote.client_id } }">{{ quote.client?.name }}</RouterLink>
+            <RouterLink :to="{ name: 'client', params: { id: quote.client_id } }">{{ quote.client_name || quote.client?.name }}</RouterLink>
+            <small v-if="quote.client_name && quote.client_name !== quote.client?.name" class="muted"> (fiche : {{ quote.client?.name }})</small>
+            <Button v-if="editable" icon="pi pi-pencil" text rounded size="small" aria-label="Changer le client" title="Changer le client ou son nom sur le devis" @click="clientOpen = true" />
             <template v-if="quote.project">
               ·
               <RouterLink :to="{ name: 'project', params: { id: quote.project.id } }">{{ quote.project.name }}</RouterLink>
@@ -727,6 +731,7 @@ const updateSection = (sectionId: number, payload: { title?: string; is_visible?
         </aside>
       </div>
 
+      <QuoteClientDialog v-model:visible="clientOpen" :quote="quote" @saved="setQuote" />
       <QuoteSiteDialog v-if="quote.project_id" v-model:visible="siteOpen" :quote-id="quote.id" />
       <QuoteEmailDialog v-model:visible="emailOpen" :quote="quote" @sent="onSent" />
       <QuoteQuantitiesLinesDialog v-model:visible="quantitiesLinesOpen" :quote="quote" @saved="setQuote" />
