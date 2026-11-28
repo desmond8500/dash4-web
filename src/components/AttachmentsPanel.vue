@@ -314,8 +314,8 @@ const removeDocument = (doc: Document) =>
 }
 
 .thumb {
-  width: 96px;
-  height: 72px;
+  width: 128px;
+  height: 96px;
   padding: 0;
   border: 1px solid var(--p-content-border-color);
   border-radius: 6px;
@@ -325,10 +325,13 @@ const removeDocument = (doc: Document) =>
   color: var(--p-text-muted-color);
 }
 
+/* Image entière dans l'aperçu (pas de recadrage), dans le bon sens */
 .thumb img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  image-orientation: from-image;
 }
 
 .panel {
